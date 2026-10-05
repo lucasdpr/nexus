@@ -16,3 +16,12 @@ class CurrentUser:
 class ClientInfo:
     ip: str | None
     user_agent: str | None
+    # Cookie de dispositivo recebido; identifica o navegador, não autentica ninguém.
+    device_token: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class LoginResult:
+    session_token: str
+    device_token: str
+    current: CurrentUser

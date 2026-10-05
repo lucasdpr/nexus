@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from app.cli import seed_demo
 from app.core.config import get_settings
 from app.core.db import create_engine
-from app.modules.auth.dependencies import SESSION_COOKIE
+from app.modules.auth.dependencies import DEVICE_COOKIE, SESSION_COOKIE
 from app.modules.auth.service import INVALID_CREDENTIALS
 from tests.conftest import ClientFactory
 from tests.integration.support import PASSWORD, add_user, signup, unique_email
@@ -112,24 +112,30 @@ async def test_failed_attempts_from_another_ip_do_not_lock_the_account(
     assert owner.status_code == 200
 
 
-async def test_distributed_attack_only_lets_known_ips_in(
+async def test_distributed_attack_only_lets_known_browsers_or_ips_in(
     make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(get_settings(), "login_max_failures_per_account", 3)
     account = await signup(make_client)
     credentials = {"email": account.email, "password": PASSWORD}
     known_ip = "198.51.100.20"
-    assert (await make_client(ip=known_ip).post("/api/v1/auth/login", json=credentials)).is_success
+    first_login = await make_client(ip=known_ip).post("/api/v1/auth/login", json=credentials)
+    device_token = first_login.cookies[DEVICE_COOKIE]
 
     for attacker_ip in ("203.0.113.1", "203.0.113.2", "203.0.113.3"):
         await make_client(ip=attacker_ip).post(
             "/api/v1/auth/login", json={**credentials, "password": "senha-errada-000"}
         )
-    from_new_ip = await make_client(ip="203.0.113.99").post("/api/v1/auth/login", json=credentials)
-    from_known_ip = await make_client(ip=known_ip).post("/api/v1/auth/login", json=credentials)
+    known_browser_on_new_ip = make_client(ip="192.0.2.50")
+    known_browser_on_new_ip.cookies.set(DEVICE_COOKIE, device_token)
 
-    assert from_new_ip.status_code == 429
+    stranger = await make_client(ip="203.0.113.99").post("/api/v1/auth/login", json=credentials)
+    from_known_ip = await make_client(ip=known_ip).post("/api/v1/auth/login", json=credentials)
+    from_known_browser = await known_browser_on_new_ip.post("/api/v1/auth/login", json=credentials)
+
+    assert stranger.status_code == 429
     assert from_known_ip.status_code == 200
+    assert from_known_browser.status_code == 200
 
 
 async def test_logout_revokes_the_session_on_the_server(make_client: ClientFactory) -> None:

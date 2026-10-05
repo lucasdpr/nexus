@@ -6,7 +6,7 @@ import unicodedata
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid7
 
-from sqlalchemy import exists, func, select, text, update
+from sqlalchemy import ColumnElement, exists, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,7 @@ from app.core.db import set_tenant
 from app.core.errors import AuthenticationError, ConflictError, NotFoundError, RateLimitedError
 from app.core.security import hash_password, hash_token, new_session_token, verify_password
 from app.modules.audit import service as audit
-from app.modules.auth.identity import ClientInfo, CurrentUser
+from app.modules.auth.identity import ClientInfo, CurrentUser, LoginResult
 from app.modules.auth.models import LoginAttempt, UserSession
 from app.modules.auth.schemas import MeResponse, OrganizationOut, SignupRequest
 from app.modules.organizations.models import Organization
@@ -62,7 +62,7 @@ def _open_session(
 
 async def signup(
     db: AsyncSession, data: SignupRequest, client: ClientInfo, settings: Settings
-) -> tuple[str, CurrentUser]:
+) -> LoginResult:
     org_id, user_id = uuid7(), uuid7()
     await set_tenant(db, org_id, user_id)
 
@@ -87,10 +87,12 @@ async def signup(
         await db.rollback()
         raise ConflictError(EMAIL_TAKEN) from exc
 
+    # O navegador e o IP do cadastro passam a ser conhecidos da conta.
+    device_token = _record_success(db, data.email, client)
     token, session = _open_session(db, org_id, user_id, client, settings)
     audit.record(db, org_id=org_id, actor_id=user_id, action="auth.signup", ip=client.ip)
     await db.commit()
-    return token, CurrentUser(user_id, org_id, Role.ADMIN, session.id)
+    return LoginResult(token, device_token, CurrentUser(user_id, org_id, Role.ADMIN, session.id))
 
 
 def _ip_bucket(ip: str | None) -> str | None:
@@ -106,16 +108,32 @@ def _ip_bucket(ip: str | None) -> str | None:
     return ip
 
 
+def _record_success(db: AsyncSession, email: str, client: ClientInfo) -> str:
+    """Registra o login bem-sucedido e devolve o token de dispositivo (o recebido ou um novo)."""
+    device_token = client.device_token or new_session_token()
+    db.add(
+        LoginAttempt(
+            email=email,
+            ip=_ip_bucket(client.ip),
+            success=True,
+            device_hash=hash_token(device_token),
+        )
+    )
+    return device_token
+
+
 async def _ensure_not_throttled(
-    db: AsyncSession, email: str, ip_bucket: str | None, settings: Settings
+    db: AsyncSession, email: str, client: ClientInfo, settings: Settings
 ) -> None:
     """Limita força bruta sem entregar a terceiros um jeito de bloquear a conta de alguém.
 
     1. Por par (conta, IP): quem erra a senha alheia bloqueia só a si mesmo.
     2. Por IP: barra a varredura de muitas contas a partir de uma origem.
-    3. Por conta, de qualquer IP: contra ataques distribuídos. Ao ser atingido, a conta passa a
-       aceitar login só de IPs onde já entrou com sucesso, então o dono continua entrando.
+    3. Por conta, de qualquer IP: contra ataques distribuídos. Ao ser atingido, a conta só
+       aceita login de um navegador ou IP onde já entrou com sucesso. O dono continua
+       entrando; só um navegador novo num IP novo espera a janela passar.
     """
+    ip_bucket = _ip_bucket(client.ip)
     since = _now() - timedelta(minutes=settings.login_window_minutes)
     failures = select(func.count()).where(
         LoginAttempt.success.is_(False), LoginAttempt.created_at >= since
@@ -130,25 +148,32 @@ async def _ensure_not_throttled(
         raise RateLimitedError(TOO_MANY_ATTEMPTS)
 
     by_account = await db.scalar(failures.where(LoginAttempt.email == email)) or 0
-    if by_account >= settings.login_max_failures_per_account and not await _is_known_ip(
-        db, email, ip_bucket, settings
+    if by_account >= settings.login_max_failures_per_account and not await _is_known_client(
+        db, email, client, settings
     ):
         raise RateLimitedError(TOO_MANY_ATTEMPTS)
 
 
-async def _is_known_ip(
-    db: AsyncSession, email: str, ip_bucket: str | None, settings: Settings
+async def _is_known_client(
+    db: AsyncSession, email: str, client: ClientInfo, settings: Settings
 ) -> bool:
-    if ip_bucket is None:
+    ip_bucket = _ip_bucket(client.ip)
+    known_by: list[ColumnElement[bool]] = []
+    if client.device_token:
+        known_by.append(LoginAttempt.device_hash == hash_token(client.device_token))
+    if ip_bucket:
+        known_by.append(LoginAttempt.ip == ip_bucket)
+    if not known_by:
         return False
-    since = _now() - timedelta(days=settings.login_known_ip_days)
+
+    since = _now() - timedelta(days=settings.login_known_client_days)
     found = await db.scalar(
         select(
             exists().where(
                 LoginAttempt.email == email,
-                LoginAttempt.ip == ip_bucket,
                 LoginAttempt.success.is_(True),
                 LoginAttempt.created_at >= since,
+                or_(*known_by),
             )
         )
     )
@@ -157,18 +182,15 @@ async def _is_known_ip(
 
 async def login(
     db: AsyncSession, email: str, password: str, client: ClientInfo, settings: Settings
-) -> tuple[str, CurrentUser]:
-    ip_bucket = _ip_bucket(client.ip)
-    await _ensure_not_throttled(db, email, ip_bucket, settings)
+) -> LoginResult:
+    await _ensure_not_throttled(db, email, client, settings)
 
     account = (await db.execute(_FIND_USER, {"email": email})).one_or_none()
     password_ok = await asyncio.to_thread(
         verify_password, account.password_hash if account else None, password
     )
-    success = password_ok and account is not None and account.status == UserStatus.ACTIVE
-    db.add(LoginAttempt(email=email, ip=ip_bucket, success=success))
-
-    if account is None or not success:
+    if account is None or not password_ok or account.status != UserStatus.ACTIVE:
+        db.add(LoginAttempt(email=email, ip=_ip_bucket(client.ip), success=False))
         if account is not None:
             await set_tenant(db, account.org_id)
             audit.record(
@@ -181,13 +203,16 @@ async def login(
         await db.commit()
         raise AuthenticationError(INVALID_CREDENTIALS)
 
+    device_token = _record_success(db, email, client)
     await set_tenant(db, account.org_id, account.user_id)
     user = await db.get_one(User, account.user_id)
     user.last_login_at = _now()
     token, session = _open_session(db, user.org_id, user.id, client, settings)
     audit.record(db, org_id=user.org_id, actor_id=user.id, action="auth.login", ip=client.ip)
     await db.commit()
-    return token, CurrentUser(user.id, user.org_id, user.role, session.id)
+    return LoginResult(
+        token, device_token, CurrentUser(user.id, user.org_id, user.role, session.id)
+    )
 
 
 async def demo_login(

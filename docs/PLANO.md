@@ -140,7 +140,8 @@ recuperação, acerto de citação e taxa de "não sei" correto. Resultados publ
 | Upload malicioso ou gigante | Tipo validado pela assinatura do arquivo, limites de tamanho e páginas, checagem de zip bomb no DOCX, nome de arquivo UUID, download com `Content-Disposition: attachment` + `nosniff`. |
 | XSS | Markdown da IA renderizado sem HTML bruto; PDF exibido pelo PDF.js. |
 | CSRF | Cookie `SameSite=Lax` + verificação de `Origin` em métodos que alteram dados. |
-| Senha e sessão | argon2id, sessão revogável, limite de tentativas no login. |
+| Senha e sessão | argon2id, sessão revogável. |
+| Força bruta no login | Limites por par (conta, IP), por IP (IPv6 agrupado por /64) e por conta. Atingido o limite por conta, só entram navegadores (cookie de dispositivo) ou IPs onde a conta já entrou nos últimos 30 dias. **Risco aceito:** durante um ataque distribuído ativo, o dono num navegador novo e num IP novo espera até 15 minutos. Um desafio extra (CAPTCHA, link por e-mail) eliminaria isso, mas exige serviço externo. |
 | Custo e abuso de IA | Limite por usuário e por IP, tamanho máximo de pergunta, teto diário na demo. |
 | Segredos | `.env` fora do Git, `.env.example` no repositório, `SecretStr`, logs sem conteúdo de documento nem texto de pergunta. |
 

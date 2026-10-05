@@ -12,6 +12,7 @@ from app.modules.auth.identity import ClientInfo, CurrentUser
 from app.modules.users.models import Role
 
 SESSION_COOKIE = "nexus_session"
+DEVICE_COOKIE = "nexus_device"
 
 
 async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
@@ -27,6 +28,7 @@ def get_client_info(request: Request) -> ClientInfo:
     return ClientInfo(
         ip=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
+        device_token=request.cookies.get(DEVICE_COOKIE),
     )
 
 

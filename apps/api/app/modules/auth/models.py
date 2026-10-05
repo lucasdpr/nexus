@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index, LargeBinary, String
+from sqlalchemy import DateTime, ForeignKey, Index, LargeBinary, String, text
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,8 +27,17 @@ class LoginAttempt(IdMixin, CreatedAtMixin, Base):
     __table_args__ = (
         Index("ix_login_attempts_email_created", "email", "created_at"),
         Index("ix_login_attempts_ip_created", "ip", "created_at"),
+        Index(
+            "ix_login_attempts_email_device",
+            "email",
+            "device_hash",
+            postgresql_where=text("success AND device_hash IS NOT NULL"),
+        ),
     )
 
     email: Mapped[str] = mapped_column(CITEXT)
+    # IPv4 ou rede IPv6 /64.
     ip: Mapped[str | None] = mapped_column(String(64))
     success: Mapped[bool]
+    # Hash do cookie de dispositivo: reconhece o navegador onde a conta já entrou com sucesso.
+    device_hash: Mapped[bytes | None] = mapped_column(LargeBinary(32))

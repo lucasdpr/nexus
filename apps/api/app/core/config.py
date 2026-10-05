@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     login_max_failures_per_account_ip: int = 5
     login_max_failures_per_ip: int = 50
     login_max_failures_per_account: int = 20
-    login_known_ip_days: int = 30
+    login_known_client_days: int = 30
 
     demo_enabled: bool = True
     demo_visitor_email: str = "visitante@novaforja.example.com"
