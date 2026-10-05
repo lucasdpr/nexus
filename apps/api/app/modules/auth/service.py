@@ -1,11 +1,12 @@
 import asyncio
+import ipaddress
 import re
 import secrets
 import unicodedata
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid7
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import exists, func, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,7 @@ from app.modules.users.schemas import UserOut
 from app.modules.users.service import EMAIL_TAKEN
 
 INVALID_CREDENTIALS = "E-mail ou senha incorretos."
+TOO_MANY_ATTEMPTS = "Muitas tentativas de login. Aguarde alguns minutos."
 
 _FIND_USER = text("select user_id, org_id, password_hash, status from auth_find_user(:email)")
 _RESOLVE_SESSION = text(
@@ -91,40 +93,80 @@ async def signup(
     return token, CurrentUser(user_id, org_id, Role.ADMIN, session.id)
 
 
-async def _ensure_not_throttled(
-    db: AsyncSession, email: str, ip: str | None, settings: Settings
-) -> None:
-    """Limita força bruta sem permitir que terceiros bloqueiem a conta de alguém.
+def _ip_bucket(ip: str | None) -> str | None:
+    """IPv6 agrupado por /64: trocar de endereço dentro da mesma rede não escapa do limite."""
+    if ip is None:
+        return None
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if address.version == 6:
+        return str(ipaddress.ip_network(f"{address}/64", strict=False))
+    return ip
 
-    O limite por conta vale por par (e-mail, IP): quem erra a senha alheia bloqueia só a si
-    mesmo. O limite por IP, mais alto, barra a varredura de muitas contas a partir de um IP.
+
+async def _ensure_not_throttled(
+    db: AsyncSession, email: str, ip_bucket: str | None, settings: Settings
+) -> None:
+    """Limita força bruta sem entregar a terceiros um jeito de bloquear a conta de alguém.
+
+    1. Por par (conta, IP): quem erra a senha alheia bloqueia só a si mesmo.
+    2. Por IP: barra a varredura de muitas contas a partir de uma origem.
+    3. Por conta, de qualquer IP: contra ataques distribuídos. Ao ser atingido, a conta passa a
+       aceitar login só de IPs onde já entrou com sucesso, então o dono continua entrando.
     """
     since = _now() - timedelta(minutes=settings.login_window_minutes)
     failures = select(func.count()).where(
-        LoginAttempt.success.is_(False),
-        LoginAttempt.created_at >= since,
-        LoginAttempt.ip == ip,
+        LoginAttempt.success.is_(False), LoginAttempt.created_at >= since
     )
+    by_pair = await db.scalar(
+        failures.where(LoginAttempt.email == email, LoginAttempt.ip == ip_bucket)
+    )
+    by_ip = await db.scalar(failures.where(LoginAttempt.ip == ip_bucket)) if ip_bucket else 0
+    if (by_pair or 0) >= settings.login_max_failures_per_account_ip or (
+        by_ip or 0
+    ) >= settings.login_max_failures_per_ip:
+        raise RateLimitedError(TOO_MANY_ATTEMPTS)
+
     by_account = await db.scalar(failures.where(LoginAttempt.email == email)) or 0
-    by_ip = (await db.scalar(failures) or 0) if ip else 0
-    if (
-        by_account >= settings.login_max_failures_per_email
-        or by_ip >= settings.login_max_failures_per_ip
+    if by_account >= settings.login_max_failures_per_account and not await _is_known_ip(
+        db, email, ip_bucket, settings
     ):
-        raise RateLimitedError("Muitas tentativas de login. Aguarde alguns minutos.")
+        raise RateLimitedError(TOO_MANY_ATTEMPTS)
+
+
+async def _is_known_ip(
+    db: AsyncSession, email: str, ip_bucket: str | None, settings: Settings
+) -> bool:
+    if ip_bucket is None:
+        return False
+    since = _now() - timedelta(days=settings.login_known_ip_days)
+    found = await db.scalar(
+        select(
+            exists().where(
+                LoginAttempt.email == email,
+                LoginAttempt.ip == ip_bucket,
+                LoginAttempt.success.is_(True),
+                LoginAttempt.created_at >= since,
+            )
+        )
+    )
+    return bool(found)
 
 
 async def login(
     db: AsyncSession, email: str, password: str, client: ClientInfo, settings: Settings
 ) -> tuple[str, CurrentUser]:
-    await _ensure_not_throttled(db, email, client.ip, settings)
+    ip_bucket = _ip_bucket(client.ip)
+    await _ensure_not_throttled(db, email, ip_bucket, settings)
 
     account = (await db.execute(_FIND_USER, {"email": email})).one_or_none()
     password_ok = await asyncio.to_thread(
         verify_password, account.password_hash if account else None, password
     )
     success = password_ok and account is not None and account.status == UserStatus.ACTIVE
-    db.add(LoginAttempt(email=email, ip=client.ip, success=success))
+    db.add(LoginAttempt(email=email, ip=ip_bucket, success=success))
 
     if account is None or not success:
         if account is not None:

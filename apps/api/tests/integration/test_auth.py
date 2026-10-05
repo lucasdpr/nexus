@@ -81,7 +81,7 @@ async def test_login_rejects_wrong_password_and_unknown_email_alike(
 async def test_login_is_throttled_after_repeated_failures(make_client: ClientFactory) -> None:
     account = await signup(make_client)
     client = make_client()
-    limit = get_settings().login_max_failures_per_email
+    limit = get_settings().login_max_failures_per_account_ip
 
     for _ in range(limit):
         await client.post(
@@ -99,7 +99,7 @@ async def test_failed_attempts_from_another_ip_do_not_lock_the_account(
 ) -> None:
     account = await signup(make_client)
     attacker = make_client(ip="203.0.113.7")
-    limit = get_settings().login_max_failures_per_email
+    limit = get_settings().login_max_failures_per_account_ip
 
     for _ in range(limit + 1):
         await attacker.post(
@@ -110,6 +110,26 @@ async def test_failed_attempts_from_another_ip_do_not_lock_the_account(
     )
 
     assert owner.status_code == 200
+
+
+async def test_distributed_attack_only_lets_known_ips_in(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "login_max_failures_per_account", 3)
+    account = await signup(make_client)
+    credentials = {"email": account.email, "password": PASSWORD}
+    known_ip = "198.51.100.20"
+    assert (await make_client(ip=known_ip).post("/api/v1/auth/login", json=credentials)).is_success
+
+    for attacker_ip in ("203.0.113.1", "203.0.113.2", "203.0.113.3"):
+        await make_client(ip=attacker_ip).post(
+            "/api/v1/auth/login", json={**credentials, "password": "senha-errada-000"}
+        )
+    from_new_ip = await make_client(ip="203.0.113.99").post("/api/v1/auth/login", json=credentials)
+    from_known_ip = await make_client(ip=known_ip).post("/api/v1/auth/login", json=credentials)
+
+    assert from_new_ip.status_code == 429
+    assert from_known_ip.status_code == 200
 
 
 async def test_logout_revokes_the_session_on_the_server(make_client: ClientFactory) -> None:
