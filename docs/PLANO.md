@@ -204,5 +204,8 @@ Depois, se fizer sentido: OCR, XLSX, versionamento de documentos, reranker.
       usuário no `.env`.
 - [ ] Repositório no GitHub (o CI e o Docker só são validados lá).
 - [x] Projeto no Neon.
+- [ ] Antes do deploy: limitar cadastros por IP. O cadastro responde 409 para e-mail já
+      existente, o que permite descobrir contas; sem verificação por e-mail não há como dar
+      resposta genérica, então a mitigação é o limite de taxa.
 - [ ] No deploy: aplicar `X-Forwarded-For` confiável (proxy da Vercel/Render) para registrar o
       IP real nos logs de auditoria e no limite de tentativas de login.

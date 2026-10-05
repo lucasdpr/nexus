@@ -94,15 +94,22 @@ async def signup(
 async def _ensure_not_throttled(
     db: AsyncSession, email: str, ip: str | None, settings: Settings
 ) -> None:
+    """Limita força bruta sem permitir que terceiros bloqueiem a conta de alguém.
+
+    O limite por conta vale por par (e-mail, IP): quem erra a senha alheia bloqueia só a si
+    mesmo. O limite por IP, mais alto, barra a varredura de muitas contas a partir de um IP.
+    """
     since = _now() - timedelta(minutes=settings.login_window_minutes)
     failures = select(func.count()).where(
-        LoginAttempt.success.is_(False), LoginAttempt.created_at >= since
+        LoginAttempt.success.is_(False),
+        LoginAttempt.created_at >= since,
+        LoginAttempt.ip == ip,
     )
-    by_email = await db.scalar(failures.where(LoginAttempt.email == email)) or 0
-    by_ip = await db.scalar(failures.where(LoginAttempt.ip == ip)) if ip else 0
+    by_account = await db.scalar(failures.where(LoginAttempt.email == email)) or 0
+    by_ip = (await db.scalar(failures) or 0) if ip else 0
     if (
-        by_email >= settings.login_max_failures_per_email
-        or (by_ip or 0) >= settings.login_max_failures_per_ip
+        by_account >= settings.login_max_failures_per_email
+        or by_ip >= settings.login_max_failures_per_ip
     ):
         raise RateLimitedError("Muitas tentativas de login. Aguarde alguns minutos.")
 

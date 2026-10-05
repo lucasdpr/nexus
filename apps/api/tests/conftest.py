@@ -29,7 +29,7 @@ from sqlalchemy import text  # noqa: E402
 from app.core.db import create_engine  # noqa: E402
 from app.main import create_app  # noqa: E402
 
-ClientFactory = Callable[[], AsyncClient]
+ClientFactory = Callable[..., AsyncClient]
 
 
 @pytest.fixture(scope="session")
@@ -75,8 +75,9 @@ async def app(database_url: str) -> AsyncIterator[FastAPI]:
 async def make_client(app: FastAPI) -> AsyncIterator[ClientFactory]:
     clients: list[AsyncClient] = []
 
-    def factory() -> AsyncClient:
-        client = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    def factory(ip: str = "127.0.0.1") -> AsyncClient:
+        transport = ASGITransport(app=app, client=(ip, 50000))
+        client = AsyncClient(transport=transport, base_url="http://test")
         clients.append(client)
         return client
 

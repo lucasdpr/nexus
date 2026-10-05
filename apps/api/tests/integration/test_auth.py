@@ -94,6 +94,24 @@ async def test_login_is_throttled_after_repeated_failures(make_client: ClientFac
     assert blocked.status_code == 429
 
 
+async def test_failed_attempts_from_another_ip_do_not_lock_the_account(
+    make_client: ClientFactory,
+) -> None:
+    account = await signup(make_client)
+    attacker = make_client(ip="203.0.113.7")
+    limit = get_settings().login_max_failures_per_email
+
+    for _ in range(limit + 1):
+        await attacker.post(
+            "/api/v1/auth/login", json={"email": account.email, "password": "senha-errada-000"}
+        )
+    owner = await make_client(ip="198.51.100.20").post(
+        "/api/v1/auth/login", json={"email": account.email, "password": PASSWORD}
+    )
+
+    assert owner.status_code == 200
+
+
 async def test_logout_revokes_the_session_on_the_server(make_client: ClientFactory) -> None:
     account = await signup(make_client)
     token = account.client.cookies[SESSION_COOKIE]
