@@ -11,7 +11,7 @@ from httpx2 import AsyncClient, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.ai.embeddings import EmbeddingError
+from app.ai.embeddings import EmbeddingError, HashingEmbeddingProvider
 from app.core.config import get_settings
 from app.core.db import set_tenant
 from app.ingestion.pipeline import GAVE_UP_ERROR, IngestionContext, job_handlers
@@ -132,6 +132,58 @@ async def test_same_file_twice_conflicts_until_the_first_is_deleted(
     assert first["id"] not in {item["id"] for item in listed.json()["items"]}
     assert await _chunks(app, admin.org_id, first["id"]) == []
     assert resent.status_code == 201
+
+
+async def test_duplicates_are_per_collection_and_do_not_reveal_hidden_documents(
+    make_client: ClientFactory,
+) -> None:
+    admin = await signup(make_client)
+    legal = await _collection(admin, "Jurídico")
+    engineering = await _collection(admin, "Engenharia")
+    manager = await add_user(admin, make_client, "MANAGER")
+    await admin.client.post(
+        f"/api/v1/collections/{engineering}/members", json={"user_id": manager.user_id}
+    )
+    await _upload(admin.client, legal, "contrato.pdf", MANUAL)
+
+    # O gerente não vê "Jurídico"; enviar o mesmo arquivo na própria coleção não revela nada.
+    same_file_elsewhere = await _upload(manager.client, engineering, "contrato.pdf", MANUAL)
+
+    assert same_file_elsewhere.status_code == 201
+
+
+class _DeletesDuringEmbedding:
+    """Simula a exclusão do documento enquanto o worker gera os embeddings."""
+
+    model = "hashing-v1"
+
+    def __init__(self, client: AsyncClient, document_id: str) -> None:
+        self._client = client
+        self._document_id = document_id
+
+    async def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        deleted = await self._client.delete(f"/api/v1/documents/{self._document_id}")
+        assert deleted.status_code == 204
+        return await HashingEmbeddingProvider().embed_documents(texts)
+
+    async def embed_query(self, text: str) -> list[float]:
+        return await HashingEmbeddingProvider().embed_query(text)
+
+    async def aclose(self) -> None:
+        return None
+
+
+async def test_document_deleted_during_processing_leaves_no_chunks(
+    app: FastAPI, make_client: ClientFactory, worker: Worker, ingestion: IngestionContext
+) -> None:
+    await worker.run_until_empty()
+    admin = await signup(make_client)
+    document = (await _upload(admin.client, await _collection(admin), "manual.pdf", MANUAL)).json()
+    racing = replace(ingestion, embedder=_DeletesDuringEmbedding(admin.client, document["id"]))
+
+    await Worker(app.state.sessionmaker, job_handlers(racing), get_settings()).run_until_empty()
+
+    assert await _chunks(app, admin.org_id, document["id"]) == []
 
 
 async def test_only_admins_and_member_managers_can_upload(make_client: ClientFactory) -> None:

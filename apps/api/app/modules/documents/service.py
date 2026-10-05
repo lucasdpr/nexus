@@ -34,7 +34,7 @@ from app.storage import Storage
 logger = logging.getLogger(__name__)
 
 NOT_FOUND = "Documento não encontrado."
-DUPLICATE = "Este arquivo já foi enviado para a organização."
+DUPLICATE = "Este arquivo já foi enviado para esta coleção."
 CANNOT_MANAGE = "Você não tem permissão para gerenciar documentos desta coleção."
 _UNSAFE_FILENAME_CHARS = re.compile(r'[\x00-\x1f\x7f"\\/]')
 
@@ -78,7 +78,7 @@ async def upload(
 
     kind = detect_kind(filename, data)
     sha256 = hashlib.sha256(data).hexdigest()
-    if await repository.find_active_by_hash(db, current.org_id, sha256) is not None:
+    if await repository.find_active_by_hash(db, current.org_id, collection_id, sha256):
         raise ConflictError(DUPLICATE)
 
     safe_name = _safe_filename(filename)
@@ -224,6 +224,12 @@ async def delete_document(
 ) -> None:
     document = (await _get_row(db, current, document_id))[0]
     _ensure_can_manage(current)
+
+    # Mesma trava da indexação: ou o worker termina antes e seus trechos são apagados aqui,
+    # ou ele vê o documento já excluído e não grava nada.
+    await db.refresh(document, with_for_update=True)
+    if document.deleted_at is not None:
+        raise NotFoundError(NOT_FOUND)
 
     # A linha fica como registro (auditoria); trechos e arquivo saem de verdade.
     document.deleted_at = datetime.now(UTC)

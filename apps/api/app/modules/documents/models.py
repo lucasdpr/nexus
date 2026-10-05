@@ -44,10 +44,12 @@ class StepStatus(StrEnum):
 class Document(IdMixin, CreatedAtMixin, Base):
     __tablename__ = "documents"
     __table_args__ = (
-        # O mesmo arquivo não entra duas vezes na organização (excluídos não contam).
+        # O mesmo arquivo não entra duas vezes na coleção (excluídos não contam). Por coleção, e
+        # não por organização, para não revelar arquivos de coleções que o usuário não vê.
         Index(
-            "uq_documents_org_sha256_active",
+            "uq_documents_collection_sha256_active",
             "org_id",
+            "collection_id",
             "sha256",
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),

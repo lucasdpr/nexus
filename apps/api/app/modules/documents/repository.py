@@ -92,10 +92,15 @@ async def get_visible(
     return (await db.execute(query)).one_or_none()
 
 
-async def find_active_by_hash(db: AsyncSession, org_id: UUID, sha256: str) -> Document | None:
+async def find_active_by_hash(
+    db: AsyncSession, org_id: UUID, collection_id: UUID, sha256: str
+) -> Document | None:
     return await db.scalar(
         select(Document).where(
-            Document.org_id == org_id, Document.sha256 == sha256, Document.deleted_at.is_(None)
+            Document.org_id == org_id,
+            Document.collection_id == collection_id,
+            Document.sha256 == sha256,
+            Document.deleted_at.is_(None),
         )
     )
 

@@ -131,6 +131,15 @@ async def _run_steps(db: AsyncSession, ctx: IngestionContext, document: Document
         details["model"] = ctx.embedder.model
 
     async with _step(db, document, StepName.INDEX):
+        # O documento pode ter sido excluído durante a extração ou os embeddings. A trava na
+        # linha (a mesma da exclusão) torna a checagem e a gravação atômicas.
+        await db.refresh(document, with_for_update=True)
+        if document.deleted_at is not None:
+            logger.info(
+                "Documento excluído durante o processamento", extra={"id": str(document.id)}
+            )
+            return
+
         # Reprocessamento: os trechos antigos saem na mesma transação em que os novos entram.
         await db.execute(
             delete(Chunk).where(Chunk.org_id == document.org_id, Chunk.document_id == document.id)

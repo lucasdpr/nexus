@@ -114,6 +114,8 @@ Todos os parâmetros são configuráveis e ajustados pelo conjunto de avaliaçã
    nunca atravessa página, para que a citação aponte a página exata.
 2. **Busca:** vetorial (top 40) + textual em português (`tsvector` + `unaccent`, top 40),
    ambas já filtradas por organização, coleções permitidas, status `READY` e filtros da tela.
+   O join com `documents` exige também `deleted_at IS NULL`, como defesa adicional à trava
+   que impede trechos de documentos excluídos durante o processamento.
 3. **Ranking:** Reciprocal Rank Fusion (k = 60), ficando com os 8 melhores. Reranker só
    entra se a avaliação mostrar ganho.
 4. **Limiar:** se nada passar do limiar, responde "Não encontrei informação suficiente nos
