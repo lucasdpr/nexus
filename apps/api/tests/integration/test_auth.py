@@ -138,6 +138,30 @@ async def test_distributed_attack_only_lets_known_browsers_or_ips_in(
     assert from_known_browser.status_code == 200
 
 
+async def test_device_token_chosen_by_the_client_is_never_trusted(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "login_max_failures_per_account", 3)
+    account = await signup(make_client)
+    credentials = {"email": account.email, "password": PASSWORD}
+    planted = "valor-escolhido-pelo-atacante"
+    victim = make_client(ip="198.51.100.30")
+    victim.cookies.set(DEVICE_COOKIE, planted)
+
+    login = await victim.post("/api/v1/auth/login", json=credentials)
+    for attacker_ip in ("203.0.113.11", "203.0.113.12", "203.0.113.13"):
+        await make_client(ip=attacker_ip).post(
+            "/api/v1/auth/login", json={**credentials, "password": "senha-errada-000"}
+        )
+    attacker = make_client(ip="203.0.113.14")
+    attacker.cookies.set(DEVICE_COOKIE, planted)
+    bypass_attempt = await attacker.post("/api/v1/auth/login", json=credentials)
+
+    assert login.status_code == 200
+    assert login.cookies[DEVICE_COOKIE] != planted
+    assert bypass_attempt.status_code == 429
+
+
 async def test_logout_revokes_the_session_on_the_server(make_client: ClientFactory) -> None:
     account = await signup(make_client)
     token = account.client.cookies[SESSION_COOKIE]

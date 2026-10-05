@@ -109,8 +109,12 @@ def _ip_bucket(ip: str | None) -> str | None:
 
 
 def _record_success(db: AsyncSession, email: str, client: ClientInfo) -> str:
-    """Registra o login bem-sucedido e devolve o token de dispositivo (o recebido ou um novo)."""
-    device_token = client.device_token or new_session_token()
+    """Registra o login bem-sucedido e emite um token de dispositivo novo.
+
+    O token recebido nunca é reaproveitado: só valores gerados aqui passam a ser reconhecidos,
+    então um cookie plantado no navegador de alguém não vira um dispositivo confiável.
+    """
+    device_token = new_session_token()
     db.add(
         LoginAttempt(
             email=email,
