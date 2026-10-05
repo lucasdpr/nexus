@@ -190,7 +190,7 @@ recuperação, acerto de citação e taxa de "não sei" correto. Resultados publ
 |---|---|
 | 0 · Fundação ✅ | Repositório, estrutura, Docker Compose, CI, configuração, health check, proxy web → API. |
 | 1 · Núcleo ✅ | Organizações, usuários, sessões, papéis, coleções, RLS, auditoria, dados de demonstração. |
-| 2 · Ingestão | Upload, validação, storage, fila e worker, extração PDF/DOCX/TXT, chunking, embeddings, status. |
+| 2 · Ingestão ✅ | Upload, validação, storage, fila e worker, extração PDF/DOCX/TXT/MD, chunking, embeddings, status. |
 | 3 · RAG | Busca híbrida, contexto, resposta com citações, abstenção, streaming, histórico. |
 | 4 · Design system | Tokens, componentes base, estrutura do app, command palette. |
 | 5 · Telas do MVP | Login/visitante, biblioteca, upload, assistente, visualizador com destaque. **Deploy.** |
@@ -210,5 +210,10 @@ Depois, se fizer sentido: OCR, XLSX, versionamento de documentos, reranker.
 - [ ] Antes do deploy: limitar cadastros por IP. O cadastro responde 409 para e-mail já
       existente, o que permite descobrir contas; sem verificação por e-mail não há como dar
       resposta genérica, então a mitigação é o limite de taxa.
+- [ ] No deploy: confirmar o limite de corpo das requisições repassadas pela Vercel (rewrite
+      para a API). Se for menor que o limite de upload (25 MB), enviar arquivos direto à API
+      ou por URL pré-assinada do armazenamento.
+- [ ] No deploy: trocar o armazenamento local por um compatível com S3 (o disco do Render
+      gratuito é efêmero).
 - [ ] No deploy: aplicar `X-Forwarded-For` confiável (proxy da Vercel/Render) para registrar o
       IP real nos logs de auditoria e no limite de tentativas de login.

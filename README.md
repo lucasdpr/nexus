@@ -4,9 +4,10 @@ Plataforma de inteligência documental: documentos corporativos viram uma base d
 conhecimento pesquisável, com respostas de IA fundamentadas em fontes verificáveis
 (documento e página).
 
-> **Em construção.** Fases 0 (fundação) e 1 (núcleo: organizações, autenticação, papéis,
-> coleções e auditoria) concluídas. O plano completo, com arquitetura, modelo de dados,
-> fluxo RAG e decisões técnicas, está em [docs/PLANO.md](docs/PLANO.md).
+> **Em construção.** Concluídas as fases 0 (fundação), 1 (organizações, autenticação, papéis,
+> coleções e auditoria) e 2 (ingestão de documentos: upload, extração, divisão em trechos,
+> embeddings e indexação, com fila de processamento). O plano completo, com arquitetura,
+> modelo de dados, fluxo RAG e decisões técnicas, está em [docs/PLANO.md](docs/PLANO.md).
 
 ## Stack
 
@@ -22,10 +23,30 @@ conhecimento pesquisável, com respostas de IA fundamentadas em fontes verificá
 
 ```
 apps/
-  api/   FastAPI: app/core (config, banco, segurança) e app/modules/<domínio>
+  api/   FastAPI
+         app/core        configuração, banco, segurança, limites
+         app/modules     domínios: auth, users, collections, documents, audit
+         app/ingestion   pipeline: detecção, extração, normalização, chunking
+         app/jobs        fila no Postgres e worker
+         app/ai          provedores de IA atrás de interfaces
   web/   Next.js
 docs/    plano e decisões
+scripts/ teste de fumaça do ambiente completo
 ```
+
+## Pipeline de documentos
+
+```
+upload ─► validação (tipo pelo conteúdo, tamanho, duplicata)
+       ─► fila (tabela jobs, SKIP LOCKED) ─► worker
+       ─► extração (PDF por página, DOCX, TXT/MD) ─► normalização
+       ─► trechos (sem atravessar páginas, com sobreposição)
+       ─► embeddings ─► indexação (pgvector HNSW + texto em português)
+```
+
+Cada etapa grava o próprio estado, que a interface acompanha. Falhas definitivas (PDF
+digitalizado, arquivo corrompido) encerram o documento com uma mensagem clara; falhas
+temporárias (rede, provedor) são repetidas com backoff.
 
 O navegador fala só com o Next.js; as rotas `/api/*` são repassadas à API, o que mantém
 o cookie de sessão no mesmo domínio.
@@ -54,8 +75,9 @@ contra CSRF e auditoria só de inserção (a aplicação não tem `UPDATE`/`DELE
 docker compose up --build
 ```
 
-Sobe banco, API e web; aplica as migrações e cria a organização de demonstração. Web em
-http://localhost:3000, documentação da API em http://localhost:8000/api/docs.
+Sobe banco, API, worker e web; aplica as migrações e cria a organização de demonstração
+(administrador `admin@novaforja.example.com`, senha `nexus-admin-local`, só para este ambiente
+local). Web em http://localhost:3000, documentação da API em http://localhost:8000/api/docs.
 
 ### Sem Docker
 
@@ -71,6 +93,10 @@ alembic upgrade head
 python -m app.cli seed-demo
 uvicorn app.main:app --port 8000
 ```
+
+O processamento de documentos roda no worker, em outro terminal (`python -m app.worker`),
+ou dentro da própria API com `RUN_WORKER_IN_API=true`. Sem `VOYAGE_API_KEY`, os embeddings
+usam um provedor local determinístico, sem custo, adequado para desenvolvimento.
 
 Web (Node 24+), em outro terminal:
 
@@ -91,5 +117,7 @@ npm run dev
 
 Os testes de integração rodam contra um PostgreSQL real (`TEST_DATABASE_URL`) e cobrem
 autenticação, papéis, isolamento entre organizações (pela API e direto no banco) e a
-imutabilidade da auditoria. O CI roda tudo isso a cada push e pull request, além do build
-das imagens Docker e de um teste de fumaça (web → proxy → API → banco).
+imutabilidade da auditoria, além do pipeline de documentos (com PDFs e DOCX reais gerados nos
+testes, falhas temporárias, exclusão durante o processamento). O CI roda tudo isso a cada push
+e pull request, constrói as imagens Docker e executa [scripts/smoke-test.sh](scripts/smoke-test.sh),
+que envia um documento pelo web e espera o worker processá-lo.

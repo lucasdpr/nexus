@@ -1,5 +1,14 @@
 # Ambiente completo com um comando: docker compose up --build
-# As credenciais do banco valem só para este ambiente local.
+# As credenciais abaixo valem só para este ambiente local.
+x-api-env: &api-env
+  ENVIRONMENT: development
+  LOG_LEVEL: INFO
+  DATABASE_URL: postgresql://nexus:nexus@db:5432/nexus
+  WEB_ORIGIN: http://localhost:3000
+  # Embeddings locais, sem chave. Para a Voyage AI: EMBEDDING_PROVIDER=voyage e VOYAGE_API_KEY.
+  EMBEDDING_PROVIDER: hashing
+  SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-nexus-admin-local}
+
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -24,16 +33,24 @@ services:
       sh -c "alembic upgrade head
       && python -m app.cli seed-demo
       && uvicorn app.main:app --host 0.0.0.0 --port 8000"
-    environment:
-      ENVIRONMENT: development
-      LOG_LEVEL: INFO
-      DATABASE_URL: postgresql://nexus:nexus@db:5432/nexus
-      WEB_ORIGIN: http://localhost:3000
+    environment: *api-env
+    volumes:
+      - storage-data:/data/storage
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
+
+  # Mesmo código da API, outro processo: consome a fila de processamento de documentos.
+  worker:
+    build: ./apps/api
+    command: python -m app.worker
+    environment: *api-env
+    volumes:
+      - storage-data:/data/storage
+    depends_on:
+      - api
 
   web:
     build:
@@ -49,3 +66,4 @@ services:
 
 volumes:
   db-data:
+  storage-data:
