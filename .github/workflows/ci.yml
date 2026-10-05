@@ -69,6 +69,11 @@ jobs:
     needs: [api, web]
     steps:
       - uses: actions/checkout@v5
+      - name: Senha aleatória para o administrador da demonstração
+        run: |
+          password="$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "SEED_ADMIN_PASSWORD=$password" >> "$GITHUB_ENV"
       - run: docker compose build
       - run: docker compose up -d --wait
       - name: Smoke test (web → proxy → api → banco → worker)

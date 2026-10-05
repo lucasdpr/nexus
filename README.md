@@ -75,9 +75,11 @@ contra CSRF e auditoria só de inserção (a aplicação não tem `UPDATE`/`DELE
 docker compose up --build
 ```
 
-Sobe banco, API, worker e web; aplica as migrações e cria a organização de demonstração
-(administrador `admin@novaforja.example.com`, senha `nexus-admin-local`, só para este ambiente
-local). Web em http://localhost:3000, documentação da API em http://localhost:8000/api/docs.
+Sobe banco, API, worker e web; aplica as migrações e cria a organização de demonstração.
+A senha do administrador (`admin@novaforja.example.com`) é gerada na primeira subida e aparece
+uma única vez em `docker compose logs api`; para escolher uma, defina `SEED_ADMIN_PASSWORD`
+antes de subir. As portas só aceitam conexões da própria máquina. Web em
+http://localhost:3000, documentação da API em http://localhost:8000/api/docs.
 
 ### Sem Docker
 

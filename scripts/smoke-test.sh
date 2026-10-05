@@ -5,7 +5,7 @@ set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:3000}"
 ADMIN_EMAIL="admin@novaforja.example.com"
-ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-nexus-admin-local}"
+ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:?defina SEED_ADMIN_PASSWORD com a senha usada ao subir o compose}"
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 

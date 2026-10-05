@@ -1,5 +1,6 @@
 # Ambiente completo com um comando: docker compose up --build
-# As credenciais abaixo valem só para este ambiente local.
+# As credenciais do banco valem só para este ambiente; as portas só aceitam conexões
+# da própria máquina (127.0.0.1).
 x-api-env: &api-env
   ENVIRONMENT: development
   LOG_LEVEL: INFO
@@ -7,7 +8,8 @@ x-api-env: &api-env
   WEB_ORIGIN: http://localhost:3000
   # Embeddings locais, sem chave. Para a Voyage AI: EMBEDDING_PROVIDER=voyage e VOYAGE_API_KEY.
   EMBEDDING_PROVIDER: hashing
-  SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-nexus-admin-local}
+  # Vazia: a senha do administrador da demonstração é gerada e aparece uma vez no log da api.
+  SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
 
 services:
   db:
@@ -17,7 +19,7 @@ services:
       POSTGRES_PASSWORD: nexus
       POSTGRES_DB: nexus
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -40,7 +42,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
   # Mesmo código da API, outro processo: consome a fila de processamento de documentos.
   worker:
@@ -62,7 +64,7 @@ services:
     depends_on:
       - api
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
 volumes:
   db-data:
