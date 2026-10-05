@@ -1,7 +1,8 @@
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID, uuid7
 
-from sqlalchemy import DateTime, MetaData, func
+from sqlalchemy import DateTime, Enum, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
@@ -24,3 +25,8 @@ class IdMixin:
 
 class CreatedAtMixin:
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+def str_enum(enum: type[StrEnum]) -> Enum:
+    """Enum guardado como texto (sem tipo ENUM do Postgres, que complica migrações)."""
+    return Enum(enum, native_enum=False, length=16, values_callable=lambda e: [m.value for m in e])

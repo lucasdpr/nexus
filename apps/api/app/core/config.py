@@ -39,6 +39,32 @@ class Settings(BaseSettings):
     # Senha do administrador criado por `python -m app.cli seed-demo`; vazia gera uma aleatória.
     seed_admin_password: SecretStr | None = None
 
+    # Arquivos enviados. Em produção, trocar por armazenamento compatível com S3.
+    storage_local_path: Path = API_DIR / "var" / "storage"
+    max_upload_mb: int = 25
+    max_pdf_pages: int = 500
+
+    # "hashing" roda localmente, sem custo, para testes e desenvolvimento sem chave de API.
+    embedding_provider: Literal["voyage", "hashing"] = "hashing"
+    voyage_api_key: SecretStr | None = None
+    voyage_model: str = "voyage-4"
+
+    # Tamanhos em caracteres (~4 caracteres por token em português).
+    chunk_target_chars: int = 2000
+    chunk_max_chars: int = 2600
+    chunk_overlap_chars: int = 300
+
+    # Em hospedagem gratuita, o worker pode rodar dentro do processo da API.
+    run_worker_in_api: bool = False
+    worker_poll_seconds: float = 2.0
+    job_max_attempts: int = 3
+    job_retry_base_seconds: float = 30.0
+    job_stale_minutes: int = 15
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
+
     @property
     def cookie_secure(self) -> bool:
         return self.environment == "production"

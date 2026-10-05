@@ -25,5 +25,13 @@ class ConflictError(DomainError):
     status_code = 409
 
 
+class PayloadTooLargeError(DomainError):
+    status_code = 413
+
+
+class UnsupportedMediaTypeError(DomainError):
+    status_code = 415
+
+
 class RateLimitedError(DomainError):
     status_code = 429

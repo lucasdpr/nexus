@@ -1,5 +1,6 @@
 import asyncio
 import os
+import tempfile
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 
@@ -21,12 +22,18 @@ TEST_DATABASE_URL = _TestEnv().test_database_url
 os.environ["ENVIRONMENT"] = "test"
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL or "postgresql://sem-banco@localhost/sem-banco"
 os.environ["LOGIN_MAX_FAILURES_PER_IP"] = "1000"
+os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="nexus-test-storage-")
+os.environ["EMBEDDING_PROVIDER"] = "hashing"
+os.environ["JOB_RETRY_BASE_SECONDS"] = "0"
 
 from fastapi import FastAPI  # noqa: E402
 from httpx2 import ASGITransport, AsyncClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+from app.core.config import get_settings  # noqa: E402
 from app.core.db import create_engine  # noqa: E402
+from app.ingestion.pipeline import IngestionContext, job_handlers  # noqa: E402
+from app.jobs.worker import Worker  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 ClientFactory = Callable[..., AsyncClient]
@@ -43,7 +50,8 @@ async def _truncate_all(database_url: str) -> None:
         await connection.execute(
             text(
                 "TRUNCATE organizations, users, sessions, login_attempts, collections, "
-                "collection_members, audit_events CASCADE"
+                "collection_members, audit_events, documents, processing_steps, chunks, jobs "
+                "CASCADE"
             )
         )
     await engine.dispose()
@@ -84,3 +92,15 @@ async def make_client(app: FastAPI) -> AsyncIterator[ClientFactory]:
     yield factory
     for client in clients:
         await client.aclose()
+
+
+@pytest.fixture
+def ingestion(app: FastAPI) -> IngestionContext:
+    state = app.state
+    return IngestionContext(state.sessionmaker, state.storage, state.embedder, get_settings())
+
+
+@pytest.fixture
+def worker(app: FastAPI, ingestion: IngestionContext) -> Worker:
+    """Worker real, acionado pelo teste com `run_until_empty()` em vez de um laço infinito."""
+    return Worker(app.state.sessionmaker, job_handlers(ingestion), get_settings())

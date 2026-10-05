@@ -3,25 +3,34 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import Select, exists, select
+from sqlalchemy import ColumnElement, Select, exists, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.modules.auth.identity import CurrentUser
 from app.modules.collections.models import Collection, CollectionMember
 from app.modules.users.models import Role, User
 
 
+def collection_access(
+    collection_id: InstrumentedAttribute[UUID], current: CurrentUser
+) -> ColumnElement[bool]:
+    """Regra única de acesso por coleção, usada por coleções, documentos e busca.
+
+    ADMIN acessa todas as coleções da organização; os demais, só as que integram.
+    """
+    if current.role == Role.ADMIN:
+        return true()
+    return exists().where(
+        CollectionMember.collection_id == collection_id,
+        CollectionMember.user_id == current.user_id,
+    )
+
+
 def _visible(current: CurrentUser) -> Select[Collection]:
-    """ADMIN vê todas as coleções da organização; os demais, só as que integram."""
-    query = select(Collection).where(Collection.org_id == current.org_id)
-    if current.role != Role.ADMIN:
-        query = query.where(
-            exists().where(
-                CollectionMember.collection_id == Collection.id,
-                CollectionMember.user_id == current.user_id,
-            )
-        )
-    return query
+    return select(Collection).where(
+        Collection.org_id == current.org_id, collection_access(Collection.id, current)
+    )
 
 
 async def list_visible(db: AsyncSession, current: CurrentUser) -> Sequence[Collection]:
