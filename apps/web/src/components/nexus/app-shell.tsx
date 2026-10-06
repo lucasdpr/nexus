@@ -5,6 +5,7 @@ import { LibraryBig, LogOut, MessageSquareText } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { RecentConversations } from "@/components/nexus/recent-conversations";
 import { Wordmark } from "@/components/nexus/wordmark";
 import {
   DropdownMenu,
@@ -64,7 +65,7 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
           )}
         </div>
 
-        <nav aria-label="Principal" className="flex-1 space-y-0.5 px-3">
+        <nav aria-label="Principal" className="space-y-0.5 px-3">
           {NAVIGATION.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
@@ -80,6 +81,8 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
             </Link>
           ))}
         </nav>
+
+        <RecentConversations />
 
         <div className="border-t border-sidebar-border p-3">
           <DropdownMenu>
