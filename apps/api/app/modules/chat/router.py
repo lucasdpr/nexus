@@ -62,9 +62,9 @@ async def ask(
     settings: SettingsDep,
     chat: ChatContextDep,
 ) -> StreamingResponse:
-    await service.ensure_can_ask(db, current, conversation_id, body.question, settings)
+    await service.reserve_question(db, current, conversation_id, body.question, settings, client)
     return StreamingResponse(
-        service.stream_answer(chat, current, conversation_id, body.question, client),
+        service.stream_answer(chat, current, conversation_id, body.question),
         media_type="text/event-stream",
         # Sem buffer em proxies: os eventos chegam ao navegador conforme são gerados.
         # "no-transform" impede a compressão (o proxy do Next acumularia a resposta inteira).

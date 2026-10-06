@@ -1,5 +1,6 @@
 """Assistente de ponta a ponta: busca com permissão, respostas com fontes e conversas."""
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -257,3 +258,31 @@ async def test_search_returns_permitted_passages_with_their_page(
     top = response.json()["items"][0]
     assert (top["document_id"], top["page"]) == (document_id, 2)
     assert "24 meses" in top["snippet"]
+
+
+async def test_deleting_conversations_does_not_reset_the_question_limit(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "chat_questions_per_hour", 1)
+    admin = await signup(make_client)
+    first_conversation = await _conversation(admin.client)
+    await _ask(admin.client, first_conversation, "Primeira pergunta?")
+
+    await admin.client.delete(f"/api/v1/chat/conversations/{first_conversation}")
+    retry = await _ask(admin.client, await _conversation(admin.client), "De novo?")
+
+    assert retry.status == 429
+
+
+async def test_simultaneous_questions_cannot_exceed_the_limit(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "chat_questions_per_hour", 1)
+    admin = await signup(make_client)
+    conversation = await _conversation(admin.client)
+
+    replies = await asyncio.gather(
+        *(_ask(admin.client, conversation, f"Pergunta {n}?") for n in range(3))
+    )
+
+    assert sorted(reply.status for reply in replies) == [200, 429, 429]

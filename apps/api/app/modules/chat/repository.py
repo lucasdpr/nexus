@@ -7,8 +7,9 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.audit.models import AuditEvent
 from app.modules.auth.identity import CurrentUser
-from app.modules.chat.models import Citation, Conversation, Message, MessageRole
+from app.modules.chat.models import Citation, Conversation, Message
 from app.modules.collections.repository import collection_access
 from app.modules.documents.models import Document
 
@@ -74,16 +75,31 @@ async def accessible_documents(
     return {row.id: row.title for row in rows}
 
 
+QUESTION_ACTION = "chat.question"
+
+
+async def lock_question_quota(db: AsyncSession, current: CurrentUser) -> None:
+    """Serializa a reserva de perguntas do usuário até o fim da transação.
+
+    Sem a trava, várias perguntas simultâneas passariam todas pela contagem antes de
+    qualquer uma ser registrada.
+    """
+    await db.execute(
+        select(func.pg_advisory_xact_lock(func.hashtextextended(str(current.user_id), 0)))
+    )
+
+
 async def count_recent_questions(db: AsyncSession, current: CurrentUser, since: datetime) -> int:
+    """Conta pela auditoria, que a aplicação não consegue apagar: excluir a conversa não
+    devolve perguntas ao limite."""
     count = await db.scalar(
         select(func.count())
-        .select_from(Message)
-        .join(Conversation, Conversation.id == Message.conversation_id)
+        .select_from(AuditEvent)
         .where(
-            Message.org_id == current.org_id,
-            Conversation.user_id == current.user_id,
-            Message.role == MessageRole.USER,
-            Message.created_at >= since,
+            AuditEvent.org_id == current.org_id,
+            AuditEvent.actor_id == current.user_id,
+            AuditEvent.action == QUESTION_ACTION,
+            AuditEvent.created_at >= since,
         )
     )
     return count or 0

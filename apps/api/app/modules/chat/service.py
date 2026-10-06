@@ -131,24 +131,42 @@ def _message_out(message: Message, citations: list[CitationOut]) -> MessageOut:
     )
 
 
-async def ensure_can_ask(
+async def reserve_question(
     db: AsyncSession,
     current: CurrentUser,
     conversation_id: UUID,
     question: str,
     settings: Settings,
+    client: ClientInfo,
 ) -> None:
-    """Validações feitas antes de abrir o streaming, para virarem respostas HTTP normais."""
-    await _owned(db, current, conversation_id)
+    """Valida a pergunta e reserva uma vaga no limite por hora, antes de abrir o streaming
+    (assim as recusas viram respostas HTTP normais).
+
+    Contagem e registro acontecem na mesma transação, sob uma trava por usuário.
+    """
+    conversation = await _owned(db, current, conversation_id)
     if len(question) > settings.chat_max_question_chars:
         raise DomainError(
             f"A pergunta passa do limite de {settings.chat_max_question_chars} caracteres."
         )
     is_demo = await db.scalar(select(Organization.is_demo).where(Organization.id == current.org_id))
     limit = settings.chat_demo_questions_per_hour if is_demo else settings.chat_questions_per_hour
+
+    await repository.lock_question_quota(db, current)
     asked = await repository.count_recent_questions(db, current, _now() - timedelta(hours=1))
     if asked >= limit:
         raise RateLimitedError("Você atingiu o limite de perguntas por hora. Tente mais tarde.")
+    audit.record(
+        db,
+        org_id=current.org_id,
+        actor_id=current.user_id,
+        action=repository.QUESTION_ACTION,
+        resource_type="conversation",
+        resource_id=conversation.id,
+        ip=client.ip,
+        details={"chars": len(question)},
+    )
+    await db.commit()
 
 
 def _source_out(source: Source) -> dict[str, Any]:
@@ -167,7 +185,6 @@ async def stream_answer(
     current: CurrentUser,
     conversation_id: UUID,
     question: str,
-    client: ClientInfo,
 ) -> AsyncIterator[str]:
     """Eventos SSE: `sources` (fontes recuperadas), `token` (texto da resposta conforme é
     gerado), `done` (mensagem final, com citações validadas) ou `error`."""
@@ -193,16 +210,6 @@ async def stream_answer(
         )
         conversation.title = conversation.title or question[:120]
         conversation.updated_at = _now()
-        audit.record(
-            db,
-            org_id=current.org_id,
-            actor_id=current.user_id,
-            action="chat.question",
-            resource_type="conversation",
-            resource_id=conversation.id,
-            ip=client.ip,
-            details={"chars": len(question)},
-        )
         await db.commit()
 
         try:
