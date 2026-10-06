@@ -5,7 +5,9 @@ citações acontece depois, fora dele (`app.rag.citations`). Nenhum provedor é 
 decidir sozinho o que é uma fonte válida.
 """
 
+import asyncio
 import json
+import logging
 import re
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
@@ -14,6 +16,12 @@ from typing import Any, Protocol
 import httpx2
 
 from app.core.config import Settings
+
+logger = logging.getLogger(__name__)
+
+# Erros do Google que costumam passar sozinhos (sobrecarga do modelo).
+_RETRYABLE_STATUS = {500, 502, 503, 504}
+_RETRY_DELAYS = (1.0, 3.0)
 
 
 class AnswerError(Exception):
@@ -94,23 +102,64 @@ class GeminiAnswerProvider:
         url = f"{self.BASE_URL}/{self._model}:streamGenerateContent"
         # A chave vai no cabeçalho, não na URL, para não aparecer em logs de acesso.
         headers = {"x-goog-api-key": self._api_key}
+        for attempt, delay in enumerate((*_RETRY_DELAYS, None)):
+            try:
+                async with self._client.stream(
+                    "POST", url, params={"alt": "sse"}, json=body, headers=headers
+                ) as response:
+                    if response.status_code == 429:
+                        raise AnswerError(
+                            "O limite de uso do provedor de IA foi atingido. "
+                            "Tente em alguns minutos."
+                        )
+                    if response.status_code in _RETRYABLE_STATUS and delay is not None:
+                        logger.warning(
+                            "Gemini respondeu %s (tentativa %s)", response.status_code, attempt + 1
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    if response.is_error:
+                        raise AnswerError(
+                            f"O provedor de IA respondeu com erro {response.status_code}."
+                        )
+                    async for line in response.aiter_lines():
+                        for text in _texts_from_sse_line(line):
+                            yield text
+                    return
+            except httpx2.TransportError as exc:
+                raise AnswerError("Não foi possível contatar o provedor de IA.") from exc
+
+
+class FallbackAnswerProvider:
+    """Usa o provedor principal; se ele falhar antes de produzir qualquer texto, responde de
+    forma extrativa com as mesmas fontes, em vez de deixar o usuário sem resposta."""
+
+    def __init__(self, primary: AnswerProvider, fallback: AnswerProvider) -> None:
+        self._primary = primary
+        self._fallback = fallback
+
+    @property
+    def model(self) -> str:
+        return self._primary.model
+
+    async def stream(self, prompt: AnswerPrompt) -> AsyncIterator[str]:
+        started = False
         try:
-            async with self._client.stream(
-                "POST", url, params={"alt": "sse"}, json=body, headers=headers
-            ) as response:
-                if response.status_code == 429:
-                    raise AnswerError(
-                        "O limite de uso do provedor de IA foi atingido. Tente em alguns minutos."
-                    )
-                if response.is_error:
-                    raise AnswerError(
-                        f"O provedor de IA respondeu com erro {response.status_code}."
-                    )
-                async for line in response.aiter_lines():
-                    for text in _texts_from_sse_line(line):
-                        yield text
-        except httpx2.TransportError as exc:
-            raise AnswerError("Não foi possível contatar o provedor de IA.") from exc
+            async for text in self._primary.stream(prompt):
+                started = True
+                yield text
+        except AnswerError:
+            if started:
+                raise
+            logger.warning("Provedor principal indisponível; usando resposta extrativa")
+        else:
+            return
+        async for text in self._fallback.stream(prompt):
+            yield text
+
+    async def aclose(self) -> None:
+        await self._primary.aclose()
+        await self._fallback.aclose()
 
 
 def _texts_from_sse_line(line: str) -> list[str]:
@@ -131,9 +180,12 @@ def build_answer_provider(settings: Settings) -> AnswerProvider:
         api_key = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else ""
         if not api_key:
             raise RuntimeError("ANSWER_PROVIDER=gemini exige GEMINI_API_KEY.")
-        return GeminiAnswerProvider(
-            api_key,
-            settings.gemini_model,
-            settings.answer_max_output_tokens,
+        return FallbackAnswerProvider(
+            GeminiAnswerProvider(
+                api_key,
+                settings.gemini_model,
+                settings.answer_max_output_tokens,
+            ),
+            ExtractiveAnswerProvider(),
         )
     return ExtractiveAnswerProvider()

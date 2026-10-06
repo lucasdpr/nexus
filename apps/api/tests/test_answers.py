@@ -8,6 +8,7 @@ from app.ai.answers import (
     AnswerError,
     AnswerPrompt,
     ExtractiveAnswerProvider,
+    FallbackAnswerProvider,
     GeminiAnswerProvider,
     build_answer_provider,
 )
@@ -15,12 +16,23 @@ from app.core.config import Settings
 
 pytestmark = pytest.mark.anyio
 
+
+@pytest.fixture(autouse=True)
+def _no_retry_delay(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def instant(_: float) -> None:
+        return None
+
+    monkeypatch.setattr("app.ai.answers.asyncio.sleep", instant)
+
+
 PROMPT = AnswerPrompt(
     system="regras", user="pergunta", sources=["Fonte um. Segunda frase. Terceira."]
 )
 
 
-async def _collect(provider: GeminiAnswerProvider | ExtractiveAnswerProvider) -> str:
+async def _collect(
+    provider: GeminiAnswerProvider | ExtractiveAnswerProvider | FallbackAnswerProvider,
+) -> str:
     return "".join([delta async for delta in provider.stream(PROMPT)])
 
 
@@ -67,7 +79,9 @@ async def test_gemini_streams_text_parts_and_skips_thoughts() -> None:
     assert body["contents"][0]["parts"][0]["text"] == "pergunta"
 
 
-@pytest.mark.parametrize(("status", "message"), [(429, "limite"), (500, "erro 500")])
+@pytest.mark.parametrize(
+    ("status", "message"), [(429, "limite"), (400, "erro 400"), (503, "erro 503")]
+)
 async def test_gemini_errors_become_user_facing_messages(status: int, message: str) -> None:
     provider = _gemini(httpx2.MockTransport(lambda _: httpx2.Response(status)))
 
@@ -84,3 +98,26 @@ def test_gemini_without_a_key_fails_at_startup_with_a_clear_message() -> None:
 
     with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
         build_answer_provider(settings)
+
+
+async def test_gemini_retries_transient_overload_then_succeeds() -> None:
+    calls = 0
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return httpx2.Response(503)
+        body = _sse({"candidates": [{"content": {"parts": [{"text": "ok [S1]"}]}}]})
+        return httpx2.Response(200, content=body)
+
+    assert await _collect(_gemini(httpx2.MockTransport(handler))) == "ok [S1]"
+    assert calls == 3
+
+
+async def test_fallback_answers_extractively_when_the_primary_is_down() -> None:
+    primary = _gemini(httpx2.MockTransport(lambda _: httpx2.Response(503)))
+
+    text = await _collect(FallbackAnswerProvider(primary, ExtractiveAnswerProvider()))
+
+    assert text.strip() == "Fonte um. Segunda frase. [S1]"
