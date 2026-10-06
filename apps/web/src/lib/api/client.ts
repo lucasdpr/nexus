@@ -19,7 +19,15 @@ export type Conversation = Schemas["ConversationOut"];
 export type ConversationDetail = Schemas["ConversationDetail"];
 export type Message = Schemas["MessageOut"];
 export type Citation = Schemas["CitationOut"];
-export type Source = Schemas["SourceOut"];
+
+/** Fonte enviada no evento `sources` do streaming (fora do OpenAPI, que não descreve SSE). */
+export type Source = {
+  marker: number;
+  document_id: string;
+  document_title: string;
+  page: number | null;
+  snippet: string;
+};
 
 export class ApiError extends Error {
   constructor(
