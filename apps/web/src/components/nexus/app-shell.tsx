@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api, type Me } from "@/lib/api/client";
+import { MeProvider } from "@/lib/me-context";
 import { cn } from "@/lib/utils";
 
 const NAVIGATION = [
@@ -117,7 +118,7 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
           </button>
         </header>
         <main id="conteudo" className="flex min-h-0 flex-1 flex-col">
-          {children}
+          <MeProvider value={me}>{children}</MeProvider>
         </main>
       </div>
 

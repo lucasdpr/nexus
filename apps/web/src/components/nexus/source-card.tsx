@@ -60,7 +60,7 @@ export function SourceCard({
         {cells.map((cell, index) => (
           <div key={cell.label} className={cn("min-w-0 px-3 py-2", index > 0 && "border-l border-border")}>
             <dt className="text-[11px] text-muted-foreground">{cell.label}</dt>
-            <dd className="truncate text-[13px] font-medium">{cell.value}</dd>
+            <dd className="line-clamp-2 text-[13px] leading-snug font-medium">{cell.value}</dd>
           </div>
         ))}
       </dl>
