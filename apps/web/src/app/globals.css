@@ -1,1 +1,182 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Tema segue o sistema operacional: sem JavaScript e sem piscar o tema errado ao carregar. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/*
+ * Design system do NEXUS — ver docs/DESIGN.md.
+ * Papel, tinta e petróleo para o produto; marca-texto só para evidência vinda de documento.
+ */
+@theme inline {
+  --font-sans: var(--font-plex-sans);
+  --font-serif: var(--font-source-serif);
+  --font-heading: var(--font-plex-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-evidence: var(--evidence);
+  --color-evidence-foreground: var(--evidence-foreground);
+  --color-evidence-soft: var(--evidence-soft);
+  --color-status-processing: var(--status-processing);
+  --color-status-ready: var(--status-ready);
+  --color-status-failed: var(--status-failed);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Raio hierárquico: selos 4px, controles 6px, painéis e diálogos 10px. */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --radius-2xl: 10px;
+}
+
+:root {
+  --radius: 6px;
+
+  --background: #f3f5f3; /* mesa */
+  --foreground: #1b2421; /* tinta */
+  --card: #ffffff; /* folha */
+  --card-foreground: #1b2421;
+  --popover: #ffffff;
+  --popover-foreground: #1b2421;
+  --primary: #5b2fd1; /* violeta da marca */
+  --primary-foreground: #f6f3ff;
+  --secondary: #e7ecea;
+  --secondary-foreground: #1b2421;
+  --muted: #eaeeec;
+  --muted-foreground: #56625e; /* grafite */
+  --accent: #ebe5fb;
+  --accent-foreground: #3c1d99;
+  --destructive: #b3261e;
+  --border: #d7ddda;
+  --input: #c6cfcb;
+  --ring: #5b2fd1;
+
+  --evidence: #f1d33f; /* marca-texto */
+  --evidence-foreground: #1b2421;
+  --evidence-soft: #fbefa6;
+  --status-processing: #8a5d00;
+  --status-ready: #2a7048;
+  --status-failed: #b3261e;
+
+  --sidebar: #eaefec;
+  --sidebar-foreground: #1b2421;
+  --sidebar-primary: #5b2fd1;
+  --sidebar-primary-foreground: #f6f3ff;
+  --sidebar-accent: #dde6e3;
+  --sidebar-accent-foreground: #1b2421;
+  --sidebar-border: #d7ddda;
+  --sidebar-ring: #5b2fd1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111715;
+    --foreground: #e4eae7;
+    --card: #172020;
+    --card-foreground: #e4eae7;
+    --popover: #1b2524;
+    --popover-foreground: #e4eae7;
+    --primary: #a78bfa;
+    --primary-foreground: #1a0b3d;
+    --secondary: #22302e;
+    --secondary-foreground: #e4eae7;
+    --muted: #1e2826;
+    --muted-foreground: #9aa8a3;
+    --accent: #2a2045;
+    --accent-foreground: #e4dcff;
+    --destructive: #f2867c;
+    --border: #2a3634;
+    --input: #36443f;
+    --ring: #a78bfa;
+
+    --evidence: #e9c93a;
+    --evidence-foreground: #14130a;
+    --evidence-soft: #4a4216;
+    --status-processing: #e0b04a;
+    --status-ready: #6cc08f;
+    --status-failed: #f2867c;
+
+    --sidebar: #141c1a;
+    --sidebar-foreground: #e4eae7;
+    --sidebar-primary: #a78bfa;
+    --sidebar-primary-foreground: #1a0b3d;
+    --sidebar-accent: #1f2b29;
+    --sidebar-accent-foreground: #e4eae7;
+    --sidebar-border: #2a3634;
+    --sidebar-ring: #a78bfa;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    font-feature-settings: "tnum" 1;
+    color-scheme: light dark;
+  }
+  body {
+    @apply bg-background text-foreground text-sm antialiased;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+}
+
+@layer utilities {
+  /* Voz do documento: tudo o que é texto citado de um arquivo usa a serifa. */
+  .document-voice {
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    line-height: 1.6;
+  }
+  /* Trecho que fundamenta uma resposta: a única ocorrência do marca-texto. */
+  .evidence-mark {
+    background: linear-gradient(transparent 12%, var(--evidence-soft) 12%, var(--evidence-soft) 88%, transparent 88%);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
