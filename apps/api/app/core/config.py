@@ -49,6 +49,27 @@ class Settings(BaseSettings):
     voyage_api_key: SecretStr | None = None
     voyage_model: str = "voyage-4"
 
+    # "extractive" responde sem modelo de linguagem (cita o trecho mais relevante): para
+    # desenvolvimento e testes sem chave de API.
+    answer_provider: Literal["gemini", "extractive"] = "extractive"
+    gemini_api_key: SecretStr | None = None
+    # gemini-3.8-flash é mais novo, mas não respondeu em 90 s no plano gratuito (out/2026).
+    gemini_model: str = "gemini-3.5-flash"
+    answer_max_output_tokens: int = 2048
+
+    # Busca híbrida: candidatos de cada busca, fusão por posição e contexto enviado à IA.
+    retrieval_vector_candidates: int = 40
+    retrieval_text_candidates: int = 40
+    retrieval_rrf_k: int = 60
+    retrieval_max_sources: int = 8
+    retrieval_min_similarity: float = 0.3
+    retrieval_max_context_chars: int = 12000
+
+    # Custo e abuso: perguntas por usuário por hora (a demonstração pública tem limite menor).
+    chat_questions_per_hour: int = 60
+    chat_demo_questions_per_hour: int = 15
+    chat_max_question_chars: int = 1000
+
     # Tamanhos em caracteres (~4 caracteres por token em português).
     chunk_target_chars: int = 2000
     chunk_max_chars: int = 2600

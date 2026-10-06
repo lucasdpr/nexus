@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.ai.answers import build_answer_provider
 from app.ai.embeddings import build_embedding_provider
 from app.core.config import get_settings
 from app.core.db import create_engine, create_sessionmaker
@@ -18,8 +19,10 @@ from app.ingestion.pipeline import IngestionContext, job_handlers
 from app.jobs.worker import Worker
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
+from app.modules.chat.router import router as chat_router
 from app.modules.collections.router import router as collections_router
 from app.modules.documents.router import router as documents_router
+from app.modules.search.router import router as search_router
 from app.modules.users.router import router as users_router
 from app.storage import LocalStorage
 
@@ -39,6 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.sessionmaker = create_sessionmaker(engine)
     app.state.storage = LocalStorage(settings.storage_local_path)
     app.state.embedder = build_embedding_provider(settings)
+    app.state.answerer = build_answer_provider(settings)
 
     stop = asyncio.Event()
     worker_task: asyncio.Task[None] | None = None
@@ -55,6 +59,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if worker_task is not None:
         await worker_task
     await app.state.embedder.aclose()
+    await app.state.answerer.aclose()
     await engine.dispose()
 
 
@@ -87,7 +92,16 @@ def create_app() -> FastAPI:
     def health() -> HealthResponse:
         return HealthResponse(status="ok", version=app.version)
 
-    for router in (auth_router, users_router, collections_router, documents_router, audit_router):
+    routers = (
+        auth_router,
+        users_router,
+        collections_router,
+        documents_router,
+        search_router,
+        chat_router,
+        audit_router,
+    )
+    for router in routers:
         app.include_router(router)
 
     return app

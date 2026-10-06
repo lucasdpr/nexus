@@ -38,6 +38,19 @@ class EmbeddingProvider(Protocol):
 
 
 _WORD = re.compile(r"\w+")
+# Palavras sem conteúdo (já sem acento): sem isso, "de", "o" e "a" aproximam qualquer pergunta
+# de qualquer trecho.
+# fmt: off
+_STOPWORDS = frozenset((
+    "a", "o", "as", "os", "um", "uma", "uns", "umas", "de", "do", "da", "dos", "das",
+    "em", "no", "na", "nos", "nas", "por", "pelo", "pela", "pelos", "pelas", "para",
+    "pra", "com", "sem", "e", "ou", "que", "qual", "quais", "quem", "como", "quando",
+    "onde", "se", "ao", "aos", "sua", "seu", "suas", "seus", "isso", "isto", "este",
+    "esta", "esse", "essa", "ser", "sao", "foi", "era", "tem", "ter", "ha", "nao", "sim",
+    "ja", "tambem", "mais", "menos", "muito", "me", "eu", "voce", "eles", "elas", "ele",
+    "ela", "lhe", "the", "of", "and", "to", "in",
+))
+# fmt: on
 
 
 class HashingEmbeddingProvider:
@@ -47,12 +60,14 @@ class HashingEmbeddingProvider:
     testes e para desenvolver sem chave de API, não para produção.
     """
 
-    model = "hashing-v1"
+    model = "hashing-v2"
 
     def _embed(self, text: str) -> list[float]:
         vector = [0.0] * EMBEDDING_DIMENSIONS
         ascii_text = unicodedata.normalize("NFKD", text.lower()).encode("ascii", "ignore")
         for word in _WORD.findall(ascii_text.decode()):
+            if word in _STOPWORDS:
+                continue
             value = int.from_bytes(hashlib.blake2b(word.encode(), digest_size=8).digest())
             vector[value % EMBEDDING_DIMENSIONS] += 1.0 if value >> 63 else -1.0
         norm = math.sqrt(sum(component * component for component in vector)) or 1.0
@@ -135,9 +150,8 @@ class VoyageEmbeddingProvider:
 
 def build_embedding_provider(settings: Settings) -> EmbeddingProvider:
     if settings.embedding_provider == "voyage":
-        if settings.voyage_api_key is None:
+        api_key = settings.voyage_api_key.get_secret_value() if settings.voyage_api_key else ""
+        if not api_key:
             raise RuntimeError("EMBEDDING_PROVIDER=voyage exige VOYAGE_API_KEY.")
-        return VoyageEmbeddingProvider(
-            settings.voyage_api_key.get_secret_value(), settings.voyage_model
-        )
+        return VoyageEmbeddingProvider(api_key, settings.voyage_model)
     return HashingEmbeddingProvider()

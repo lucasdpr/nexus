@@ -5,8 +5,8 @@ conhecimento pesquisável, com respostas de IA fundamentadas em fontes verificá
 (documento e página).
 
 > **Em construção.** Concluídas as fases 0 (fundação), 1 (organizações, autenticação, papéis,
-> coleções e auditoria) e 2 (ingestão de documentos: upload, extração, divisão em trechos,
-> embeddings e indexação, com fila de processamento). O plano completo, com arquitetura,
+> coleções e auditoria), 2 (ingestão de documentos com fila de processamento) e 3 (busca
+> híbrida e assistente com respostas citando documento e página). O plano completo, com arquitetura,
 > modelo de dados, fluxo RAG e decisões técnicas, está em [docs/PLANO.md](docs/PLANO.md).
 
 ## Stack
@@ -28,6 +28,8 @@ apps/
          app/modules     domínios: auth, users, collections, documents, audit
          app/ingestion   pipeline: detecção, extração, normalização, chunking
          app/jobs        fila no Postgres e worker
+         app/retrieval   busca híbrida (vetorial + textual) e fusão por RRF
+         app/rag         montagem do contexto e validação das citações
          app/ai          provedores de IA atrás de interfaces
   web/   Next.js
 docs/    plano e decisões
@@ -47,6 +49,23 @@ upload ─► validação (tipo pelo conteúdo, tamanho, duplicata)
 Cada etapa grava o próprio estado, que a interface acompanha. Falhas definitivas (PDF
 digitalizado, arquivo corrompido) encerram o documento com uma mensagem clara; falhas
 temporárias (rede, provedor) são repetidas com backoff.
+
+## Respostas com fontes
+
+```
+pergunta ─► embedding ─► busca vetorial + textual em português ─► fusão (RRF)
+         ─► limiar de relevância: nada relevante = "não encontrei", sem chamar a IA
+         ─► fontes numeradas [S1..Sn] ─► IA em streaming (SSE)
+         ─► citações validadas: fonte inexistente é removida; resposta sem fonte vira "não encontrei"
+```
+
+- A permissão é aplicada dentro das consultas: a IA só recebe trechos que o usuário pode ler,
+  então nem um documento com instruções maliciosas consegue expor conteúdo restrito.
+- O texto dos documentos entra no prompt como dado, delimitado, e o modelo é instruído a
+  ignorar ordens que apareçam dentro dele.
+- Citações antigas não reabrem acesso: documento excluído ou de coleção que o usuário deixou
+  de acessar aparece como indisponível no histórico.
+- Conversas são privadas de quem as criou; há limite de perguntas por hora (menor na demo).
 
 O navegador fala só com o Next.js; as rotas `/api/*` são repassadas à API, o que mantém
 o cookie de sessão no mesmo domínio.

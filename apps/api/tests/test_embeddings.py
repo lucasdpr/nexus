@@ -73,3 +73,12 @@ async def test_voyage_reports_permanent_errors() -> None:
 
     with pytest.raises(EmbeddingError, match="401"):
         await provider.embed_query("x")
+
+
+async def test_hashing_ignores_words_without_content() -> None:
+    provider = HashingEmbeddingProvider()
+
+    question = await provider.embed_query("Qual é a política de férias dos funcionários?")
+    passage = await provider.embed_query("O prazo de garantia é de 24 meses a partir da data.")
+
+    assert _cosine(question, passage) == 0.0

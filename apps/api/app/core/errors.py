@@ -35,3 +35,7 @@ class UnsupportedMediaTypeError(DomainError):
 
 class RateLimitedError(DomainError):
     status_code = 429
+
+
+class ServiceUnavailableError(DomainError):
+    status_code = 503

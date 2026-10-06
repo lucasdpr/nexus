@@ -86,7 +86,7 @@ async def test_pdf_is_processed_into_chunks_that_keep_their_page(
     chunks = await _chunks(app, admin.org_id, document["id"])
     warranty = [chunk for chunk in chunks if "24 meses" in chunk.content]
     assert [chunk.page for chunk in warranty] == [2]
-    assert all(chunk.embedding_model == "hashing-v1" for chunk in chunks)
+    assert all(chunk.embedding_model == HashingEmbeddingProvider.model for chunk in chunks)
 
 
 async def test_docx_and_markdown_are_indexed_without_pages(
@@ -155,7 +155,7 @@ async def test_duplicates_are_per_collection_and_do_not_reveal_hidden_documents(
 class _DeletesDuringEmbedding:
     """Simula a exclusão do documento enquanto o worker gera os embeddings."""
 
-    model = "hashing-v1"
+    model = HashingEmbeddingProvider.model
 
     def __init__(self, client: AsyncClient, document_id: str) -> None:
         self._client = client

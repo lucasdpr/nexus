@@ -24,6 +24,8 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL or "postgresql://sem-banco@localh
 os.environ["LOGIN_MAX_FAILURES_PER_IP"] = "1000"
 os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="nexus-test-storage-")
 os.environ["EMBEDDING_PROVIDER"] = "hashing"
+# Os testes nunca chamam provedores de IA reais, mesmo com chaves no .env.
+os.environ["ANSWER_PROVIDER"] = "extractive"
 os.environ["JOB_RETRY_BASE_SECONDS"] = "0"
 
 from fastapi import FastAPI  # noqa: E402
@@ -50,7 +52,8 @@ async def _truncate_all(database_url: str) -> None:
         await connection.execute(
             text(
                 "TRUNCATE organizations, users, sessions, login_attempts, collections, "
-                "collection_members, audit_events, documents, processing_steps, chunks, jobs "
+                "collection_members, audit_events, documents, processing_steps, chunks, jobs, "
+                "conversations, messages, citations "
                 "CASCADE"
             )
         )

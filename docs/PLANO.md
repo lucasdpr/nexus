@@ -40,6 +40,19 @@ conhecimento pesquisável, com respostas de IA fundamentadas em fontes verificá
 - **E-mail único no sistema todo:** o login não pergunta a organização.
 - **Neon:** projeto `NEXUS` (us-east-1) com branches `production`, `dev` e `test`.
 
+### Decisões da implementação (Fase 3)
+
+- **Modelo de resposta:** `gemini-3.5-flash` (~3 s, citações corretas no teste com fontes reais).
+  O `gemini-3.8-flash` não respondeu em 90 s no plano gratuito durante os testes.
+- **Busca textual com OU:** `plainto_tsquery` exige todas as palavras, o que quase nunca
+  acontece em perguntas naturais; os lexemas são recombinados com OU.
+- **Relevância antes da IA:** sem trecho com palavra da pergunta ou similaridade mínima, a
+  resposta é "não encontrei" sem chamar o modelo (custo zero e nenhuma chance de inventar).
+- **Streaming pelo proxy:** a resposta SSE leva `Cache-Control: no-transform`; sem isso, a
+  compressão do Next acumulava a resposta inteira antes de enviá-la.
+- **Embeddings locais sem stopwords:** sem remover "de", "o", "a", perguntas sem relação
+  passavam do limiar de similaridade.
+
 ### Pontos de atenção do plano gratuito
 
 - No plano gratuito do Gemini, a Google usa os dados para melhorar os produtos. A demo só
@@ -191,7 +204,7 @@ recuperação, acerto de citação e taxa de "não sei" correto. Resultados publ
 | 0 · Fundação ✅ | Repositório, estrutura, Docker Compose, CI, configuração, health check, proxy web → API. |
 | 1 · Núcleo ✅ | Organizações, usuários, sessões, papéis, coleções, RLS, auditoria, dados de demonstração. |
 | 2 · Ingestão ✅ | Upload, validação, storage, fila e worker, extração PDF/DOCX/TXT/MD, chunking, embeddings, status. |
-| 3 · RAG | Busca híbrida, contexto, resposta com citações, abstenção, streaming, histórico. |
+| 3 · RAG ✅ | Busca híbrida, contexto, resposta com citações, abstenção, streaming, histórico. |
 | 4 · Design system | Tokens, componentes base, estrutura do app, command palette. |
 | 5 · Telas do MVP | Login/visitante, biblioteca, upload, assistente, visualizador com destaque. **Deploy.** |
 | 6 · Ampliação | Busca global e filtros, dashboard, tela de auditoria, administração. |
@@ -203,8 +216,8 @@ Depois, se fizer sentido: OCR, XLSX, versionamento de documentos, reranker.
 
 ## Pendências
 
-- [ ] Chave da API do Gemini (Google AI Studio) e da Voyage AI, colocadas pelo próprio
-      usuário no `.env`.
+- [x] Chave do Gemini no `.env` (validada com chamada real).
+- [ ] Chave da Voyage AI no `.env` (até lá, embeddings locais).
 - [ ] Repositório no GitHub (o CI e o Docker só são validados lá).
 - [x] Projeto no Neon.
 - [ ] Antes do deploy: limitar cadastros por IP. O cadastro responde 409 para e-mail já
