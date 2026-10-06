@@ -342,3 +342,26 @@ async def test_ready_document_can_be_reprocessed(
     assert queued_again.status_code == 409
     final = (await admin.client.get(f"/api/v1/documents/{document['id']}")).json()
     assert final["status"] == "READY"
+
+
+async def test_document_text_follows_the_same_access_rules(
+    app: FastAPI, make_client: ClientFactory, worker: Worker
+) -> None:
+    admin = await signup(make_client)
+    collection_id = await _collection(admin)
+    document = (await _upload(admin.client, collection_id, "manual.pdf", MANUAL)).json()
+    await worker.run_until_empty()
+    member = await add_user(admin, make_client, "MEMBER")
+    other_org = await signup(make_client, "Outra organização")
+    path = f"/api/v1/documents/{document['id']}/chunks"
+
+    chunks = (await admin.client.get(path)).json()
+    warranty = next(chunk for chunk in chunks if "24 meses" in chunk["content"])
+    single = await admin.client.get(f"{path}/{warranty['id']}")
+
+    assert [chunk["ordinal"] for chunk in chunks] == list(range(len(chunks)))
+    assert single.json()["page"] == 2
+    assert (await member.client.get(path)).status_code == 404
+    assert (await other_org.client.get(f"{path}/{warranty['id']}")).status_code == 404
+    unrelated_chunk = await admin.client.get(f"{path}/{UUID(int=0)}")
+    assert unrelated_chunk.status_code == 404

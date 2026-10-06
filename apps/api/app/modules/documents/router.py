@@ -9,7 +9,13 @@ from app.modules.auth.dependencies import Client, CurrentUserDep, DbSession, Set
 from app.modules.documents import repository, service
 from app.modules.documents.models import DocumentKind, DocumentStatus
 from app.modules.documents.repository import DocumentFilters
-from app.modules.documents.schemas import DocumentDetail, DocumentPage, SortField, SortOrder
+from app.modules.documents.schemas import (
+    ChunkOut,
+    DocumentDetail,
+    DocumentPage,
+    SortField,
+    SortOrder,
+)
 from app.storage import Storage
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
@@ -81,6 +87,24 @@ async def list_documents(
 @router.get("/{document_id}")
 async def get_document(document_id: UUID, db: DbSession, current: CurrentUserDep) -> DocumentDetail:
     return await service.get_detail(db, current, document_id)
+
+
+@router.get("/{document_id}/chunks")
+async def list_document_chunks(
+    document_id: UUID, db: DbSession, current: CurrentUserDep
+) -> list[ChunkOut]:
+    """Texto indexado, na ordem: usado pelo visualizador de formatos sem páginas."""
+    chunks = await service.get_chunks(db, current, document_id)
+    return [ChunkOut.model_validate(chunk) for chunk in chunks]
+
+
+@router.get("/{document_id}/chunks/{chunk_id}")
+async def get_document_chunk(
+    document_id: UUID, chunk_id: UUID, db: DbSession, current: CurrentUserDep
+) -> ChunkOut:
+    """Um trecho citado: o visualizador o grifa na página certa."""
+    chunks = await service.get_chunks(db, current, document_id, chunk_id)
+    return ChunkOut.model_validate(chunks[0])
 
 
 @router.get("/{document_id}/file")

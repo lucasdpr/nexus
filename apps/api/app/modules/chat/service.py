@@ -112,6 +112,7 @@ def _citation_out(citation: Citation, accessible: dict[UUID, str]) -> CitationOu
     return CitationOut(
         marker=citation.marker,
         document_id=citation.document_id,
+        chunk_id=citation.chunk_id if title else None,
         document_title=title,
         page=citation.page if title else None,
         quote=citation.quote if title else None,
@@ -174,6 +175,7 @@ def _source_out(source: Source) -> dict[str, Any]:
     return SourceOut(
         marker=source.marker,
         document_id=chunk.document_id,
+        chunk_id=chunk.chunk_id,
         document_title=chunk.document_title,
         page=chunk.page,
         snippet=chunk.content[:SNIPPET_CHARS],

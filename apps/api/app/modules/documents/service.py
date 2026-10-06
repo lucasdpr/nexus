@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import re
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import PurePath
 from uuid import UUID, uuid7
@@ -191,6 +192,17 @@ async def get_detail(db: AsyncSession, current: CurrentUser, document_id: UUID) 
             for step in steps
         ],
     )
+
+
+async def get_chunks(
+    db: AsyncSession, current: CurrentUser, document_id: UUID, chunk_id: UUID | None = None
+) -> Sequence[Chunk]:
+    """Texto indexado do documento (ou de um trecho), com a mesma regra de acesso do resto."""
+    document = (await _get_row(db, current, document_id))[0]
+    chunks = await repository.list_chunks(db, current.org_id, document.id, chunk_id)
+    if chunk_id is not None and not chunks:
+        raise NotFoundError("Trecho não encontrado.")
+    return chunks
 
 
 async def download(

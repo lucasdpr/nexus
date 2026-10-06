@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.modules.documents.models import DocumentKind, DocumentStatus, StepName, StepStatus
 
@@ -42,6 +42,15 @@ class DocumentDetail(DocumentOut):
     sha256: str
     version: int
     steps: list[StepOut]
+
+
+class ChunkOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    ordinal: int
+    page: int | None
+    content: str
 
 
 class DocumentPage(BaseModel):

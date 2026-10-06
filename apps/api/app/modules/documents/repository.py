@@ -12,6 +12,7 @@ from app.modules.auth.identity import CurrentUser
 from app.modules.collections.models import Collection
 from app.modules.collections.repository import collection_access
 from app.modules.documents.models import (
+    Chunk,
     Document,
     DocumentKind,
     DocumentStatus,
@@ -90,6 +91,19 @@ async def get_visible(
 ) -> DocumentRow | None:
     query = _with_names(_visible(current).where(Document.id == document_id))
     return (await db.execute(query)).one_or_none()
+
+
+async def list_chunks(
+    db: AsyncSession, org_id: UUID, document_id: UUID, chunk_id: UUID | None = None
+) -> Sequence[Chunk]:
+    query = (
+        select(Chunk)
+        .where(Chunk.org_id == org_id, Chunk.document_id == document_id)
+        .order_by(Chunk.ordinal)
+    )
+    if chunk_id is not None:
+        query = query.where(Chunk.id == chunk_id)
+    return (await db.scalars(query)).all()
 
 
 async def find_active_by_hash(

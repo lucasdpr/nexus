@@ -15,6 +15,8 @@ class AskRequest(BaseModel):
 class CitationOut(BaseModel):
     marker: int
     document_id: UUID
+    # Trecho citado, para o visualizador grifá-lo; None se o documento foi reprocessado.
+    chunk_id: UUID | None
     # None quando o usuário não tem mais acesso ao documento ou ele foi excluído.
     document_title: str | None
     page: int | None
@@ -48,6 +50,7 @@ class SourceOut(BaseModel):
 
     marker: int
     document_id: UUID
+    chunk_id: UUID
     document_title: str
     page: int | None
     snippet: str

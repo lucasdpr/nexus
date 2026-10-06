@@ -38,6 +38,7 @@ type Turn = {
 type PanelSource = {
   marker: number;
   documentId: string;
+  chunkId: string | null;
   title: string | null;
   page: number | null;
   quote: string | null;
@@ -71,6 +72,7 @@ function panelSources(turn: Turn): PanelSource[] {
     return turn.message.citations.map((citation) => ({
       marker: citation.marker,
       documentId: citation.document_id,
+      chunkId: citation.chunk_id ?? null,
       title: citation.document_title,
       page: citation.page,
       quote: citation.quote,
@@ -79,6 +81,7 @@ function panelSources(turn: Turn): PanelSource[] {
   return turn.sources.map((source) => ({
     marker: source.marker,
     documentId: source.document_id,
+    chunkId: source.chunk_id,
     title: source.document_title,
     page: source.page,
     quote: source.snippet,
@@ -327,6 +330,14 @@ function TurnView({
   );
 }
 
+function documentHref(source: PanelSource): string {
+  const query = new URLSearchParams();
+  if (source.page) query.set("pagina", String(source.page));
+  if (source.chunkId) query.set("trecho", source.chunkId);
+  const search = query.toString();
+  return `/documentos/${source.documentId}${search ? `?${search}` : ""}`;
+}
+
 function SourcesPanel({
   sources,
   activeMarker,
@@ -356,7 +367,7 @@ function SourcesPanel({
               documentTitle={source.title}
               page={source.page}
               quote={source.quote}
-              href={`/documentos/${source.documentId}${source.page ? `?pagina=${source.page}` : ""}`}
+              href={documentHref(source)}
               className={cn(activeMarker === source.marker && "border-primary ring-2 ring-primary/30")}
             />
           </div>

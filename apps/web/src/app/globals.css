@@ -180,3 +180,10 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Trecho citado sobre a camada de texto do PDF: o texto é transparente, só o fundo aparece. */
+.pdf-evidence {
+  color: transparent;
+  background: color-mix(in srgb, var(--evidence) 45%, transparent);
+  border-radius: 2px;
+}
