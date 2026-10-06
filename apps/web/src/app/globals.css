@@ -76,7 +76,7 @@
   --accent-foreground: #3c1d99;
   --destructive: #b3261e;
   --border: #dcd6ea;
-  --input: #cbc3df;
+  --input: #8c83a6; /* borda de campo: 3,5:1 sobre a folha (WCAG 1.4.11) */
   --ring: #5b2fd1;
 
   --evidence: #f1d33f; /* marca-texto */
@@ -114,7 +114,7 @@
     --accent-foreground: #e4dcff;
     --destructive: #f2867c;
     --border: #2e2645;
-    --input: #3a3154;
+    --input: #6a6086;
     --ring: #a78bfa;
 
     --evidence: #e9c93a;

@@ -281,7 +281,7 @@ function DocumentActions({ document, canManage }: { document: DocumentSummary; c
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="size-8" aria-label={`Ações de ${document.title}`}>
+          <Button variant="ghost" size="icon" className="size-11 sm:size-8" aria-label={`Ações de ${document.title}`}>
             <MoreHorizontal aria-hidden />
           </Button>
         </DropdownMenuTrigger>

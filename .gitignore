@@ -25,3 +25,6 @@ apps/api/var/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Skills de IA copiadas para o Claude Code (ferramenta local, não fazem parte do produto)
+.claude/skills/
