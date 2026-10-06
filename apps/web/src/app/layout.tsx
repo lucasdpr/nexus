@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   title: { default: "NEXUS", template: "%s | NEXUS" },
   description:
     "Pergunte aos documentos da sua empresa e receba respostas com o documento e a página de onde vieram.",
+  icons: { apple: "/brand/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "NEXUS", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

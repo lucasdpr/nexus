@@ -1,14 +1,20 @@
+import Image from "next/image";
+
 import { cn } from "@/lib/utils";
 
-/** Marca do produto: o nome com a barra do marca-texto sob as letras, como um trecho destacado. */
+/** Marca do produto: o "N" da logo seguido do nome. */
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <span className={cn("relative inline-flex w-fit self-start items-baseline font-semibold tracking-[0.08em]", className)}>
-      <span
-        aria-hidden
-        className="absolute inset-x-[-0.15em] bottom-[0.08em] h-[0.42em] rounded-[2px] bg-evidence/80"
+    <span className={cn("inline-flex w-fit items-center gap-2 font-semibold tracking-[0.18em]", className)}>
+      <Image
+        src="/brand/icon-192.png"
+        alt=""
+        width={96}
+        height={96}
+        priority
+        className="size-[1.6em] rounded-[22%]"
       />
-      <span className="relative">NEXUS</span>
+      NEXUS
     </span>
   );
 }
