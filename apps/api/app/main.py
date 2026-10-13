@@ -24,7 +24,7 @@ from app.modules.collections.router import router as collections_router
 from app.modules.documents.router import router as documents_router
 from app.modules.search.router import router as search_router
 from app.modules.users.router import router as users_router
-from app.storage import LocalStorage
+from app.storage import build_storage
 
 JSON_BODY_LIMIT_BYTES = 1024 * 1024
 MULTIPART_OVERHEAD_BYTES = 1024 * 1024
@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     engine = create_engine(settings.database_url.get_secret_value())
     app.state.sessionmaker = create_sessionmaker(engine)
-    app.state.storage = LocalStorage(settings.storage_local_path)
+    app.state.storage = build_storage(settings)
     app.state.embedder = build_embedding_provider(settings)
     app.state.answerer = build_answer_provider(settings)
 

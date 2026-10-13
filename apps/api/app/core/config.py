@@ -39,8 +39,15 @@ class Settings(BaseSettings):
     # Senha do administrador criado por `python -m app.cli seed-demo`; vazia gera uma aleatória.
     seed_admin_password: SecretStr | None = None
 
-    # Arquivos enviados. Em produção, trocar por armazenamento compatível com S3.
+    # Arquivos enviados: disco local (desenvolvimento) ou serviço compatível com S3 (produção;
+    # o disco de hospedagens gratuitas é apagado a cada reinício).
+    storage_backend: Literal["local", "s3"] = "local"
     storage_local_path: Path = API_DIR / "var" / "storage"
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: SecretStr | None = None
+    s3_region: str = "auto"
     max_upload_mb: int = 25
     max_pdf_pages: int = 500
 
