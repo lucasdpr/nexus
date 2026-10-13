@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, errorMessage, unwrap } from "@/lib/api/client";
+import { startIntro } from "@/lib/intro";
 
 export function LoginForm() {
   const router = useRouter();
@@ -16,11 +17,17 @@ export function LoginForm() {
   const login = useMutation({
     mutationFn: (credentials: { email: string; password: string }) =>
       unwrap(api.POST("/api/v1/auth/login", { body: credentials })),
-    onSuccess: () => router.replace("/painel"),
+    onSuccess: () => {
+      startIntro();
+      router.replace("/painel");
+    },
   });
   const visit = useMutation({
     mutationFn: () => unwrap(api.POST("/api/v1/auth/demo")),
-    onSuccess: () => router.replace("/painel"),
+    onSuccess: () => {
+      startIntro();
+      router.replace("/painel");
+    },
   });
 
   const error = login.error ?? visit.error;

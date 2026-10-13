@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import { useState } from "react";
 
+import { LoginIntro } from "@/components/fx/login-intro";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
         <Toaster position="bottom-right" />
+        <LoginIntro />
       </QueryClientProvider>
     </MotionConfig>
   );

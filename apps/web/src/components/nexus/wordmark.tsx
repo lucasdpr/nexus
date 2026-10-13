@@ -12,6 +12,7 @@ export function Wordmark({ className }: { className?: string }) {
         width={96}
         height={96}
         priority
+        data-logo
         className="size-[1.6em] rounded-[22%] shadow-[0_0_18px_-2px_var(--neon-violet)] ring-1 ring-neon-violet/50"
       />
       NEXUS
