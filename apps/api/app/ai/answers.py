@@ -103,6 +103,8 @@ _STOPWORDS = frozenset(
     ]
 )
 _MIN_COVERAGE = 0.6
+# Fração mínima das palavras da pergunta que precisa existir nas fontes.
+_MIN_PRESENT = 0.5
 
 
 def _fold(text: str) -> str:
@@ -141,16 +143,23 @@ class ExtractiveAnswerProvider:
     @staticmethod
     def _best_sentence(question: str, sources: Sequence[str]) -> str | None:
         wanted = _stems(question)
-        codes = set(_CODE.findall(_fold(question)))
         if not wanted:
+            return None
+        folded = " ".join(_fold(source) for source in sources)
+        # Código citado na pergunta (CX-300): se nenhuma fonte o tem, o documento não é esse.
+        if any(code not in folded for code in set(_CODE.findall(_fold(question)))):
+            return None
+        # Palavras da pergunta que não aparecem em fonte nenhuma (o nome da empresa, que está
+        # em outro trecho, por exemplo) não contam contra a resposta; mas se quase nada da
+        # pergunta existe nas fontes, ela é sobre outro assunto.
+        present = {stem for stem in wanted if stem in folded}
+        if len(present) / len(wanted) < _MIN_PRESENT:
             return None
         best: tuple[float, int, str] | None = None
         for marker, source in enumerate(sources, start=1):
-            if not all(code in _fold(source) for code in codes):
-                continue
             for sentence in _SENTENCE_END.split(source):
-                covered = len(wanted & _stems(sentence))
-                coverage = covered / len(wanted)
+                covered = len(present & _stems(sentence))
+                coverage = covered / len(present)
                 if covered >= 2 and coverage >= _MIN_COVERAGE and (not best or coverage > best[0]):
                     best = (coverage, marker, sentence.strip())
         if best is None:
