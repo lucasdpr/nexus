@@ -100,3 +100,22 @@ jobs:
           true
       - if: always()
         run: docker compose down -v
+
+  # Reimplanta a API no Render depois que os testes e o ambiente Docker passam. Usa o "deploy
+  # hook" do serviço (Render > nexus-api > Settings > Deploy Hook), guardado como segredo
+  # RENDER_DEPLOY_HOOK_URL. Sem o segredo, o job termina sem fazer nada.
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [api, web, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+    steps:
+      - name: Reimplantar a API
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL não configurado; deploy da API não disparado."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 30 -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+          echo "Deploy da API disparado."
