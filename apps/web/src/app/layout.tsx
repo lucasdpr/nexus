@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, Source_Serif_4 } from "next/font/google";
 
+import { AmbientBackground } from "@/components/fx/ambient-background";
+
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -25,16 +27,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f3fa" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f0b1a" },
-  ],
+  themeColor: "#09090b",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className={`${plexSans.variable} ${sourceSerif.variable}`}>
+    <html lang="pt-BR" className={`dark ${plexSans.variable} ${sourceSerif.variable}`}>
       <body>
+        <AmbientBackground />
         <Providers>{children}</Providers>
       </body>
     </html>

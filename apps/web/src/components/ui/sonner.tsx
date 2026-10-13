@@ -7,7 +7,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       // Segue o tema do sistema operacional, como o resto do produto.
-      theme="system"
+      theme="dark"
       className="toaster group"
       icons={{
         success: (

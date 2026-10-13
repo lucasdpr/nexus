@@ -8,7 +8,7 @@ import { EVALUATION, percent } from "@/lib/evaluation";
 import { getSession } from "@/lib/session";
 
 export default async function Home() {
-  if (await getSession()) redirect("/perguntar");
+  if (await getSession()) redirect("/painel");
 
   return (
     <div className="flex min-h-dvh flex-col">

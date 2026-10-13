@@ -10,7 +10,7 @@ import { LoginForm } from "./login-form";
 export const metadata: Metadata = { title: "Entrar" };
 
 export default async function SignInPage() {
-  if (await getSession()) redirect("/perguntar");
+  if (await getSession()) redirect("/painel");
 
   return (
     <main className="grid min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">

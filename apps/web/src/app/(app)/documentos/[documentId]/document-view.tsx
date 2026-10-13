@@ -1,15 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, CircleAlert, Download, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect } from "react";
 
+import { IngestionPipeline } from "@/components/documents/ingestion-pipeline";
 import { StatusBadge, isPending } from "@/components/nexus/status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, errorMessage, unwrap, type DocumentDetail } from "@/lib/api/client";
+import { api, errorMessage, unwrap } from "@/lib/api/client";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -18,14 +19,6 @@ const PdfViewer = dynamic(() => import("./pdf-viewer"), {
   ssr: false,
   loading: () => <p className="py-20 text-center text-muted-foreground">Abrindo o PDF…</p>,
 });
-
-const STEP_NAMES: Record<DocumentDetail["steps"][number]["step"], string> = {
-  UPLOAD: "Upload concluído",
-  EXTRACT: "Texto extraído",
-  CHUNK: "Conteúdo dividido em trechos",
-  EMBED: "Embeddings gerados",
-  INDEX: "Indexação concluída",
-};
 
 type Props = { documentId: string; initialPage: number; chunkId?: string };
 
@@ -117,7 +110,7 @@ export function DocumentView({ documentId, initialPage, chunkId }: Props) {
         )}
       </section>
 
-      <aside aria-label="Informações do documento" className="shrink-0 space-y-6 overflow-y-auto border-t border-border bg-secondary/40 p-5 lg:w-[360px] lg:border-t-0 lg:border-l">
+      <aside aria-label="Informações do documento" className="glass m-3 shrink-0 space-y-6 overflow-y-auto rounded-2xl p-5 lg:w-[360px]">
         {citedChunk.data && (
           <section>
             <h2 className="text-[13px] text-muted-foreground">Trecho citado na resposta</h2>
@@ -154,31 +147,12 @@ export function DocumentView({ documentId, initialPage, chunkId }: Props) {
         </section>
 
         <section>
-          <h2 className="text-[13px] text-muted-foreground">Processamento</h2>
-          <ol className="mt-2 space-y-2">
-            {data.steps.map((step) => (
-              <li key={step.step} className="flex items-start gap-2.5 text-[14px]">
-                <StepIcon status={step.status} />
-                <div className="min-w-0">
-                  <p className={cn(step.status === "PENDING" && "text-muted-foreground")}>{STEP_NAMES[step.step]}</p>
-                  {step.error && <p className="text-[13px] text-destructive">{step.error}</p>}
-                </div>
-              </li>
-            ))}
-          </ol>
-          {data.error && <p className="mt-3 text-[13px] text-destructive">{data.error}</p>}
+          <h2 className="mb-3 text-[13px] text-muted-foreground">Processamento</h2>
+          <IngestionPipeline steps={data.steps} error={data.error} />
         </section>
       </aside>
     </div>
   );
-}
-
-function StepIcon({ status }: { status: DocumentDetail["steps"][number]["status"] }) {
-  const base = "mt-0.5 size-4 shrink-0";
-  if (status === "DONE") return <Check className={cn(base, "text-status-ready")} aria-label="Concluída" />;
-  if (status === "RUNNING") return <LoaderCircle className={cn(base, "animate-spin text-status-processing")} aria-label="Em andamento" />;
-  if (status === "FAILED") return <CircleAlert className={cn(base, "text-status-failed")} aria-label="Falhou" />;
-  return <span className={cn(base, "grid place-items-center")} aria-label="Pendente"><span className="size-1.5 rounded-full bg-muted-foreground/60" /></span>;
 }
 
 /** Ficha do documento no formato do carimbo de desenho técnico. */

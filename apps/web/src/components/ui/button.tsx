@@ -1,14 +1,17 @@
+"use client"
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { Slot } from "radix-ui"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button relative isolate inline-flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:scale-[0.95] active:duration-100 after:pointer-events-none after:absolute after:inset-0 after:-z-10 after:opacity-0 after:bg-[radial-gradient(circle_at_var(--rx,50%)_var(--ry,50%),rgb(255_255_255/0.45)_0,transparent_60%)] data-[ripple=on]:after:animate-[ripple_600ms_ease-out] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default:
+          "bg-primary text-primary-foreground hover:shadow-[0_0_28px_-6px_var(--neon-violet)] hover:brightness-110",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -45,6 +48,7 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  onPointerDown,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -54,6 +58,16 @@ function Button({
 
   return (
     <Comp
+      // Gota de luz: nasce no ponto do clique e se expande (keyframe "ripple" em globals.css).
+      onPointerDown={(event: React.PointerEvent<HTMLButtonElement>) => {
+        const target = event.currentTarget
+        const box = target.getBoundingClientRect()
+        target.style.setProperty("--rx", `${event.clientX - box.left}px`)
+        target.style.setProperty("--ry", `${event.clientY - box.top}px`)
+        target.dataset.ripple = "off"
+        requestAnimationFrame(() => (target.dataset.ripple = "on"))
+        onPointerDown?.(event)
+      }}
       data-slot="button"
       data-variant={variant}
       data-size={size}

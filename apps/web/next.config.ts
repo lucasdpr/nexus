@@ -5,6 +5,8 @@ const apiUrl = process.env.API_URL ?? "http://localhost:8000";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Esconde o indicador "N" do Next no servidor de desenvolvimento.
+  devIndicators: false,
   // O navegador fala só com o Next; /api/* é repassado ao FastAPI no mesmo domínio,
   // o que mantém o cookie de sessão first-party mesmo com a API hospedada em outro lugar.
   async rewrites() {

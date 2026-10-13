@@ -1,10 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, FileSearch, Square } from "lucide-react";
+import { ArrowUp, FileSearch, SearchX, Square } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
-import { AnswerText } from "@/components/nexus/answer-text";
+import { SPRING } from "@/components/fx/motion";
+import { AnswerText, type CitationPreview } from "@/components/nexus/answer-text";
 import { SourceCard } from "@/components/nexus/source-card";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -189,7 +191,7 @@ export function Chat({ conversationId: initialId }: { conversationId?: string })
   }
 
   return (
-    <div className="flex h-[calc(100dvh-7rem)] min-h-0 md:h-dvh">
+    <div className="flex h-[calc(100dvh-9rem)] min-h-0 md:h-[calc(100dvh-4rem)]">
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto">
           {turns.length === 0 ? (
@@ -241,14 +243,14 @@ export function Chat({ conversationId: initialId }: { conversationId?: string })
           )}
         </div>
         {turns.length > 0 && (
-          <div className="border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-8">
+          <div className="px-4 pt-2 pb-4 sm:px-8">
             <Composer onSend={send} disabled={streaming} className="mx-auto max-w-3xl" />
           </div>
         )}
       </div>
 
       {turns.length > 0 && (
-        <aside aria-label="Fontes da resposta" className="hidden w-[380px] shrink-0 overflow-y-auto border-l border-border bg-secondary/40 lg:block">
+        <aside aria-label="Fontes da resposta" className="glass m-3 hidden w-[380px] shrink-0 overflow-y-auto rounded-2xl lg:block">
           {panel}
         </aside>
       )}
@@ -279,11 +281,20 @@ function TurnView({
 }) {
   const sources = panelSources(turn);
   const markers = new Set(sources.map((source) => source.marker));
+  const previews = new Map<number, CitationPreview>(
+    sources.map((source) => [source.marker, { title: source.title, page: source.page, quote: source.quote }]),
+  );
   const notAnswered = turn.message?.answered === false;
 
   return (
-    <article className="space-y-4">
-      <p className="ml-auto w-fit max-w-[85%] rounded-xl rounded-br-sm bg-card px-4 py-2.5 text-[15px] ring-1 ring-border">
+    // Cada troca entra numa mola, subindo de leve.
+    <motion.article
+      className="space-y-4"
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={SPRING}
+    >
+      <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-neon-violet/30 to-neon-indigo/20 px-4 py-2.5 text-[15px] ring-1 ring-neon-violet/30">
         {turn.question}
       </p>
 
@@ -298,18 +309,22 @@ function TurnView({
         )}
 
         {turn.status === "failed" ? (
-          <p role="alert" className="rounded-md border border-destructive/40 px-3 py-2 text-[14px] text-destructive">
+          <p role="alert" className="animate-shake rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[14px] text-rose-300 shadow-[0_0_20px_-8px_var(--neon-red)]">
             {turn.error}
           </p>
         ) : notAnswered ? (
-          <div className="rounded-md border border-dashed border-border px-4 py-3">
-            <p className="text-[15px]">{turn.text}</p>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Tente outras palavras, ou confira se o documento está numa coleção que você acessa.
-            </p>
-          </div>
+          <NotFound text={turn.text} />
         ) : (
-          turn.text && <AnswerText text={turn.text} markers={markers} activeMarker={activeMarker} onCite={onCite} />
+          turn.text && (
+            <AnswerText
+              text={turn.text}
+              markers={markers}
+              previews={previews}
+              activeMarker={activeMarker}
+              onCite={onCite}
+              streaming={turn.status === "streaming"}
+            />
+          )
         )}
       </div>
 
@@ -326,7 +341,25 @@ function TurnView({
           </Button>
         )}
       </div>
-    </article>
+    </motion.article>
+  );
+}
+
+/** Estado "não encontrei": ícone neon pulsando devagar e o caminho para tentar de novo. */
+function NotFound({ text }: { text: string }) {
+  return (
+    <div className="glass flex items-start gap-4 rounded-2xl px-5 py-4">
+      <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-neon-cyan/10 ring-1 ring-neon-cyan/40">
+        <span className="absolute inset-0 animate-ping rounded-full bg-neon-cyan/20 [animation-duration:2.4s]" aria-hidden />
+        <SearchX className="relative size-5 text-cyan-300" aria-hidden />
+      </span>
+      <div>
+        <p className="text-[15px]">{text}</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Tente outras palavras, ou confira se o documento está numa coleção que você acessa.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -403,8 +436,9 @@ function Composer({
   }
 
   return (
+    // Caixa "spotlight": vidro flutuante com a borda em gradiente neon girando (.neon-ring).
     <form
-      className={cn("relative", className)}
+      className={cn("neon-ring relative rounded-2xl shadow-[0_18px_50px_-18px_var(--neon-violet)]", className)}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -426,13 +460,13 @@ function Composer({
             submit();
           }
         }}
-        className="field-sizing-content max-h-48 min-h-[52px] w-full resize-none rounded-xl border border-input bg-card py-3.5 pr-14 pl-4 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-[15px]"
+        className="field-sizing-content block max-h-48 min-h-[56px] w-full resize-none rounded-2xl bg-[rgb(19_19_24/0.85)] py-4 pr-14 pl-5 text-base outline-none backdrop-blur-xl placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-neon-cyan/50 sm:text-[15px]"
       />
       <Button
         type="submit"
         size="icon"
         disabled={!question || disabled || tooLong}
-        className="absolute right-2 bottom-2 size-9 rounded-lg"
+        className="absolute right-2.5 bottom-2.5 size-9 rounded-xl"
         aria-label="Enviar pergunta"
       >
         <ArrowUp aria-hidden />

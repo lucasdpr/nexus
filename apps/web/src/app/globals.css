@@ -2,12 +2,14 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Tema segue o sistema operacional: sem JavaScript e sem piscar o tema errado ao carregar. */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* O NEXUS é escuro por identidade ("Vibrant Liquid Glass"): a classe .dark fica fixa no <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design system do NEXUS — ver docs/DESIGN.md.
- * Papel, tinta e petróleo para o produto; marca-texto só para evidência vinda de documento.
+ * Design system do NEXUS — "Vibrant Liquid Glass".
+ * Espaço profundo de fundo, vidro fumê nas superfícies, roxo da marca como cor principal e
+ * ciano/esmeralda/índigo como luzes de acento. O marca-texto amarelo continua exclusivo
+ * do trecho que veio de um documento.
  */
 @theme inline {
   --font-sans: var(--font-plex-sans);
@@ -40,6 +42,13 @@
   --color-status-ready: var(--status-ready);
   --color-status-failed: var(--status-failed);
 
+  /* Luzes de acento (usadas em brilhos, bordas e gráficos, nunca como única informação). */
+  --color-neon-violet: var(--neon-violet);
+  --color-neon-indigo: var(--neon-indigo);
+  --color-neon-cyan: var(--neon-cyan);
+  --color-neon-emerald: var(--neon-emerald);
+  --color-neon-red: var(--neon-red);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -49,90 +58,62 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Raio hierárquico: selos 4px, controles 6px, painéis e diálogos 10px. */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 6px;
-  --radius-xl: 10px;
-  --radius-2xl: 10px;
+  /* Raio hierárquico: selos 6px, controles 10px, painéis 18px, cápsulas cheias. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+
+  --animate-blob: blob 22s ease-in-out infinite alternate;
+  --animate-border-spin: border-spin 4s linear infinite;
+  --animate-caret: caret 1.1s ease-in-out infinite;
+  --animate-shake: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 :root {
-  --radius: 6px;
+  --radius: 10px;
 
-  --background: #f5f3fa; /* lavanda clara */
-  --foreground: #1c1630; /* tinta violeta */
-  --card: #ffffff; /* folha */
-  --card-foreground: #1c1630;
-  --popover: #ffffff;
-  --popover-foreground: #1c1630;
-  --primary: #5b2fd1; /* violeta da marca */
-  --primary-foreground: #f6f3ff;
-  --secondary: #ece8f6;
-  --secondary-foreground: #1c1630;
-  --muted: #eeebf6;
-  --muted-foreground: #5f5874; 
-  --accent: #ebe5fb;
-  --accent-foreground: #3c1d99;
-  --destructive: #b3261e;
-  --border: #dcd6ea;
-  --input: #8c83a6; /* borda de campo: 3,5:1 sobre a folha (WCAG 1.4.11) */
-  --ring: #5b2fd1;
+  --background: #09090b; /* espaço profundo */
+  --foreground: #f4f4f5;
+  --card: #131318; /* vidro fumê sem desfoque, para onde o vidro não cabe */
+  --card-foreground: #f4f4f5;
+  --popover: #16161d;
+  --popover-foreground: #f4f4f5;
+  --primary: #bf5af2; /* roxo neon da marca: 5,6:1 sobre o fundo */
+  --primary-foreground: #12001f;
+  --secondary: #1c1c24;
+  --secondary-foreground: #f4f4f5;
+  --muted: #18181f;
+  --muted-foreground: #a1a1aa; /* 7,8:1 sobre o fundo */
+  --accent: #221d36;
+  --accent-foreground: #ede9fe;
+  --destructive: #fb7185;
+  --border: rgb(255 255 255 / 0.09);
+  --input: #71717a; /* borda de campo: 4,1:1 (WCAG 1.4.11) */
+  --ring: #bf5af2;
 
-  --evidence: #f1d33f; /* marca-texto */
-  --evidence-foreground: #1c1630;
-  --evidence-soft: #fbefa6;
-  --status-processing: #8a5d00;
-  --status-ready: #2a7048;
-  --status-failed: #b3261e;
+  --evidence: #facc15; /* marca-texto */
+  --evidence-foreground: #161302;
+  --evidence-soft: rgb(250 204 21 / 0.28);
+  --status-processing: #fbbf24;
+  --status-ready: #34d399;
+  --status-failed: #fb7185;
 
-  --sidebar: #eeeaf7;
-  --sidebar-foreground: #1c1630;
-  --sidebar-primary: #5b2fd1;
-  --sidebar-primary-foreground: #f6f3ff;
-  --sidebar-accent: #e3dcf4;
-  --sidebar-accent-foreground: #1c1630;
-  --sidebar-border: #dcd6ea;
-  --sidebar-ring: #5b2fd1;
-}
+  --neon-violet: #b026ff;
+  --neon-indigo: #6366f1;
+  --neon-cyan: #06b6d4;
+  --neon-emerald: #10b981;
+  --neon-red: #f43f5e;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f0b1a;
-    --foreground: #ebe7f5;
-    --card: #171126;
-    --card-foreground: #ebe7f5;
-    --popover: #1c1530;
-    --popover-foreground: #ebe7f5;
-    --primary: #a78bfa;
-    --primary-foreground: #1a0b3d;
-    --secondary: #251d3b;
-    --secondary-foreground: #ebe7f5;
-    --muted: #1d1730;
-    --muted-foreground: #a69fbd;
-    --accent: #2a2045;
-    --accent-foreground: #e4dcff;
-    --destructive: #f2867c;
-    --border: #2e2645;
-    --input: #6a6086;
-    --ring: #a78bfa;
-
-    --evidence: #e9c93a;
-    --evidence-foreground: #14130a;
-    --evidence-soft: #4a4216;
-    --status-processing: #e0b04a;
-    --status-ready: #6cc08f;
-    --status-failed: #f2867c;
-
-    --sidebar: #130e21;
-    --sidebar-foreground: #ebe7f5;
-    --sidebar-primary: #a78bfa;
-    --sidebar-primary-foreground: #1a0b3d;
-    --sidebar-accent: #231b38;
-    --sidebar-accent-foreground: #ebe7f5;
-    --sidebar-border: #2e2645;
-    --sidebar-ring: #a78bfa;
-  }
+  --sidebar: rgb(19 19 24 / 0.6);
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #bf5af2;
+  --sidebar-primary-foreground: #12001f;
+  --sidebar-accent: rgb(191 90 242 / 0.14);
+  --sidebar-accent-foreground: #f4f4f5;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #bf5af2;
 }
 
 @layer base {
@@ -142,7 +123,7 @@
   html {
     @apply font-sans;
     font-feature-settings: "tnum" 1;
-    color-scheme: light dark;
+    color-scheme: dark;
   }
   body {
     @apply bg-background text-foreground text-sm antialiased;
@@ -153,6 +134,9 @@
   }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
+  }
+  ::selection {
+    background: rgb(176 38 255 / 0.45);
   }
 }
 
@@ -165,9 +149,117 @@
   }
   /* Trecho que fundamenta uma resposta: a única ocorrência do marca-texto. */
   .evidence-mark {
-    background: linear-gradient(transparent 12%, var(--evidence-soft) 12%, var(--evidence-soft) 88%, transparent 88%);
+    background: linear-gradient(transparent 10%, var(--evidence-soft) 10%, var(--evidence-soft) 90%, transparent 90%);
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
+  }
+  /* Vidro fumê: superfície translúcida com desfoque do que está atrás. */
+  .glass {
+    background: rgb(23 23 28 / 0.55);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid rgb(255 255 255 / 0.08);
+  }
+  /* Borda neon girando: o gradiente cônico gira pela propriedade --angle. */
+  .neon-ring {
+    position: relative;
+    isolation: isolate;
+  }
+  .neon-ring::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from var(--angle),
+      var(--neon-violet),
+      var(--neon-cyan),
+      var(--neon-emerald),
+      var(--neon-indigo),
+      var(--neon-violet)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: var(--animate-border-spin);
+  }
+}
+
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-spin {
+  to {
+    --angle: 360deg;
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  }
+  50% {
+    transform: translate3d(6vw, -4vh, 0) scale(1.12);
+    border-radius: 63% 37% 45% 55% / 55% 61% 39% 45%;
+  }
+  100% {
+    transform: translate3d(-5vw, 5vh, 0) scale(0.94);
+    border-radius: 38% 62% 56% 44% / 63% 38% 62% 37%;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    opacity: 1;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+@keyframes wave {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-3px);
+  }
+  40%,
+  60% {
+    transform: translateX(3px);
   }
 }
 

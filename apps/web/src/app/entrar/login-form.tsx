@@ -16,11 +16,11 @@ export function LoginForm() {
   const login = useMutation({
     mutationFn: (credentials: { email: string; password: string }) =>
       unwrap(api.POST("/api/v1/auth/login", { body: credentials })),
-    onSuccess: () => router.replace("/perguntar"),
+    onSuccess: () => router.replace("/painel"),
   });
   const visit = useMutation({
     mutationFn: () => unwrap(api.POST("/api/v1/auth/demo")),
-    onSuccess: () => router.replace("/perguntar"),
+    onSuccess: () => router.replace("/painel"),
   });
 
   const error = login.error ?? visit.error;
