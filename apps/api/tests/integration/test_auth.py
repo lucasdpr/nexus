@@ -267,3 +267,34 @@ async def test_simultaneous_signups_from_one_ip_cannot_exceed_the_limit(
     created = [response for response in responses if response.status_code == 201]
     assert len(created) == 3
     assert all(response.status_code in (201, 429) for response in responses)
+
+
+async def test_total_signups_per_hour_are_capped_even_from_different_ips(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "signup_max_per_ip_per_hour", 1000)
+    # Os cadastros de outros testes na última hora contam no teto total.
+    monkeypatch.setattr(settings, "signup_max_total_per_hour", 100_000)
+    first = await make_client("203.0.113.10").post(
+        "/api/v1/auth/signup",
+        json={
+            "organization_name": "Teto A",
+            "name": "Pessoa",
+            "email": unique_email(),
+            "password": PASSWORD,
+        },
+    )
+    monkeypatch.setattr(settings, "signup_max_total_per_hour", 1)
+    forged_other_ip = await make_client("203.0.113.11").post(
+        "/api/v1/auth/signup",
+        json={
+            "organization_name": "Teto B",
+            "name": "Pessoa",
+            "email": unique_email(),
+            "password": PASSWORD,
+        },
+    )
+
+    assert first.status_code == 201
+    assert forged_other_ip.status_code == 429

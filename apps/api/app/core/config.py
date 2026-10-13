@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # Contas novas por IP (agrupado como nos logins) a cada hora, contando tentativas
     # recusadas também, para não servir de teste de quais e-mails já existem.
     signup_max_per_ip_per_hour: int = 5
+    # Teto de contas novas por hora no sistema todo. Não depende de IP, então vale mesmo se alguém
+    # forjar o endereço chamando a API direto, sem passar pelo front-end.
+    signup_max_total_per_hour: int = 100
     # Quantos proxies confiáveis ficam entre o cliente e a API (lê o IP de X-Forwarded-For
     # a partir da direita). Sem valor: 4 em produção e 0 fora dela. O 4 foi medido em produção:
     # cliente, Vercel, Cloudflare (que fica na frente do Render) e o balanceador do Render.

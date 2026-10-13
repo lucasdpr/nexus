@@ -98,25 +98,31 @@ async def signup(
 
 
 async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings: Settings) -> None:
-    """Limita contas novas por IP. A tentativa é gravada e confirmada antes de qualquer outra
-    coisa, para contar mesmo quando o cadastro é recusado (e-mail já usado)."""
+    """Limita contas novas por IP e no total. A tentativa é gravada e confirmada antes de
+    qualquer outra coisa, para contar mesmo quando o cadastro é recusado (e-mail já usado).
+
+    O teto total não depende do IP: o IP vem de cabeçalhos que só são confiáveis quando o
+    tráfego passa pelo front-end, e quem chama a API direto pode forjá-lo.
+    """
     bucket = _ip_bucket(client.ip)
-    if bucket is None:
-        return
-    # Trava por IP até o commit: contar e gravar viram uma operação só, e cadastros simultâneos
-    # não passam do limite juntos.
-    await db.execute(
-        select(func.pg_advisory_xact_lock(func.hashtextextended(f"signup:{bucket}", 0)))
-    )
+    # Trava até o commit: contar e gravar viram uma operação só, e cadastros simultâneos
+    # não passam do limite juntos. Uma trava só para todos mantém o teto total exato.
+    await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended("signup", 0))))
     since = _now() - timedelta(hours=1)
-    recent = await db.scalar(
-        select(func.count())
-        .select_from(SignupAttempt)
-        .where(SignupAttempt.ip == bucket, SignupAttempt.created_at >= since)
+    total = await db.scalar(
+        select(func.count()).select_from(SignupAttempt).where(SignupAttempt.created_at >= since)
     )
-    if (recent or 0) >= settings.signup_max_per_ip_per_hour:
+    if (total or 0) >= settings.signup_max_total_per_hour:
         raise RateLimitedError(TOO_MANY_SIGNUPS)
-    db.add(SignupAttempt(ip=bucket))
+    if bucket is not None:
+        from_ip = await db.scalar(
+            select(func.count())
+            .select_from(SignupAttempt)
+            .where(SignupAttempt.ip == bucket, SignupAttempt.created_at >= since)
+        )
+        if (from_ip or 0) >= settings.signup_max_per_ip_per_hour:
+            raise RateLimitedError(TOO_MANY_SIGNUPS)
+    db.add(SignupAttempt(ip=bucket or "desconhecido"))
     await db.commit()
 
 
