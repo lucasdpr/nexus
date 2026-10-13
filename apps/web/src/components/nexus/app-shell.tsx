@@ -1,10 +1,12 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { LibraryBig, LogOut, MessageSquareText } from "lucide-react";
+import { LibraryBig, LogOut, MessageSquareText, ScrollText, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 
+import { CommandPalette, SearchButton } from "@/components/nexus/command-palette";
 import { RecentConversations } from "@/components/nexus/recent-conversations";
 import { Wordmark } from "@/components/nexus/wordmark";
 import {
@@ -19,10 +21,14 @@ import { api, type Me } from "@/lib/api/client";
 import { MeProvider } from "@/lib/me-context";
 import { cn } from "@/lib/utils";
 
-const NAVIGATION = [
-  { href: "/perguntar", label: "Perguntar", icon: MessageSquareText },
-  { href: "/biblioteca", label: "Biblioteca", icon: LibraryBig },
-] as const;
+function navigationFor(role: Me["user"]["role"]) {
+  return [
+    { href: "/perguntar", label: "Perguntar", icon: MessageSquareText },
+    { href: "/biblioteca", label: "Biblioteca", icon: LibraryBig },
+    ...(role !== "MEMBER" ? [{ href: "/usuarios", label: "Usuários", icon: Users }] : []),
+    ...(role === "ADMIN" ? [{ href: "/auditoria", label: "Auditoria", icon: ScrollText }] : []),
+  ];
+}
 
 const ROLE_NAMES: Record<Me["user"]["role"], string> = {
   ADMIN: "Administração",
@@ -38,6 +44,8 @@ function initials(name: string): string {
 export function AppShell({ me, children }: { me: Me; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const navigation = navigationFor(me.user.role);
   const logout = useMutation({
     mutationFn: () => api.POST("/api/v1/auth/logout"),
     onSettled: () => router.replace("/entrar"),
@@ -66,7 +74,7 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
         </div>
 
         <nav aria-label="Principal" className="space-y-0.5 px-3">
-          {NAVIGATION.map(({ href, label, icon: Icon }) => (
+          {navigation.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -82,6 +90,7 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
           ))}
         </nav>
 
+        <SearchButton onClick={() => setSearchOpen(true)} />
         <RecentConversations />
 
         <div className="border-t border-sidebar-border p-3">
@@ -114,6 +123,13 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
           <Wordmark className="text-[15px]" />
           <button
             type="button"
+            onClick={() => setSearchOpen(true)}
+            className="ml-auto mr-1 rounded-md px-2 py-1 text-[13px] text-muted-foreground hover:bg-accent"
+          >
+            Buscar
+          </button>
+          <button
+            type="button"
             onClick={() => logout.mutate()}
             className="rounded-md px-2 py-1 text-[13px] text-muted-foreground hover:bg-accent"
           >
@@ -125,11 +141,16 @@ export function AppShell({ me, children }: { me: Me; children: React.ReactNode }
         </main>
       </div>
 
+      <MeProvider value={me}>
+        <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+      </MeProvider>
+
       <nav
         aria-label="Principal"
-        className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-2 border-t border-border bg-background/95 backdrop-blur md:hidden"
+        style={{ gridTemplateColumns: `repeat(${navigation.length}, minmax(0, 1fr))` }}
+        className="fixed inset-x-0 bottom-0 z-40 grid h-16 border-t border-border bg-background/95 backdrop-blur md:hidden"
       >
-        {NAVIGATION.map(({ href, label, icon: Icon }) => (
+        {navigation.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
