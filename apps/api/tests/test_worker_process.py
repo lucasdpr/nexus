@@ -16,8 +16,8 @@ def test_the_worker_module_can_map_every_table_on_its_own() -> None:
         "configure_mappers()\n"
         "Base.metadata.sorted_tables\n"
     )
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 (código fixo, sem entrada externa)
         [sys.executable, "-c", code], capture_output=True, text=True, check=False
-    )  # noqa: S603
+    )
 
     assert result.returncode == 0, result.stderr

@@ -7,13 +7,14 @@ for preciso: a reserva de jobs usa SKIP LOCKED.
 import asyncio
 import contextlib
 
+# Registra todos os modelos no metadata: sem isso as chaves estrangeiras não resolvem.
+import app.models  # noqa: F401
 from app.ai.embeddings import build_embedding_provider
 from app.core.config import get_settings
 from app.core.db import create_engine, create_sessionmaker
 from app.core.logging import configure_logging
 from app.ingestion.pipeline import IngestionContext, job_handlers
 from app.jobs.worker import Worker
-from app.models import Base  # noqa: F401 (registra todos os modelos; sem isso as chaves estrangeiras não resolvem)
 from app.storage import build_storage
 
 
