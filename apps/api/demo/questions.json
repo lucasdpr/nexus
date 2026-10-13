@@ -1,0 +1,25 @@
+[
+  {"question": "Qual o prazo de garantia do compressor CX-200?", "expect": [{"title": "Manual do Compressor CX-200", "page": 4}], "answer_contains": ["24 meses"]},
+  {"question": "Qual a pressão máxima de trabalho do CX-200?", "expect": [{"title": "Manual do Compressor CX-200", "page": 1}], "answer_contains": ["10 bar"]},
+  {"question": "A cada quantas horas se troca o filtro de ar do compressor?", "expect": [{"title": "Manual do Compressor CX-200", "page": 3}], "answer_contains": ["2.000"]},
+  {"question": "A que temperatura de descarga o compressor desarma sozinho?", "expect": [{"title": "Manual do Compressor CX-200", "page": 2}], "answer_contains": ["110"]},
+  {"question": "Qual o telefone do suporte técnico do fabricante do compressor?", "expect": [{"title": "Manual do Compressor CX-200", "page": 4}], "answer_contains": ["0800 555 0123"]},
+  {"question": "Em que horário acontecem as paradas programadas da Linha 2?", "expect": [{"title": "Plano de Manutenção Preventiva - Linha 2", "page": null}], "answer_contains": ["domingo"]},
+  {"question": "Qual é a meta de tempo médio de reparo (MTTR)?", "expect": [{"title": "Plano de Manutenção Preventiva - Linha 2", "page": null}], "answer_contains": ["3 horas"]},
+  {"question": "De quanto em quanto tempo o treinamento de LOTO é renovado?", "expect": [{"title": "Procedimento de Bloqueio e Etiquetagem (LOTO)", "page": 1}], "answer_contains": ["24 meses"]},
+  {"question": "Quanto tempo se espera para os capacitores descarregarem no bloqueio?", "expect": [{"title": "Procedimento de Bloqueio e Etiquetagem (LOTO)", "page": 2}], "answer_contains": ["5 minutos"]},
+  {"question": "Por quanto tempo o formulário de bloqueio é guardado?", "expect": [{"title": "Procedimento de Bloqueio e Etiquetagem (LOTO)", "page": 3}], "answer_contains": ["5 anos"]},
+  {"question": "De quanto em quanto tempo se trocam os filtros do respirador?", "expect": [{"title": "Política de Equipamentos de Proteção Individual", "page": 2}], "answer_contains": ["30 dias"]},
+  {"question": "Qual a atenuação mínima exigida do protetor auricular na estampagem?", "expect": [{"title": "Política de Equipamentos de Proteção Individual", "page": 1}], "answer_contains": ["20 dB"]},
+  {"question": "Qual o preço base da tonelada de aço no contrato com a Aços Vale Forte?", "expect": [{"title": "Contrato de Fornecimento - Aços Vale Forte", "page": 2}], "answer_contains": ["6.480"]},
+  {"question": "Em quantos dias a Aços Vale Forte deve entregar cada pedido?", "expect": [{"title": "Contrato de Fornecimento - Aços Vale Forte", "page": 2}], "answer_contains": ["15 dias"]},
+  {"question": "Em quantos dias o contrato de aço é pago após a nota fiscal?", "expect": [{"title": "Contrato de Fornecimento - Aços Vale Forte", "page": 3}], "answer_contains": ["45 dias"]},
+  {"question": "Quem aprova compras acima de R$ 50.000?", "expect": [{"title": "Política de Compras", "page": null}], "answer_contains": ["diretoria"]},
+  {"question": "Quantas cotações são exigidas para compras acima de R$ 5.000?", "expect": [{"title": "Política de Compras", "page": null}], "answer_contains": ["3"]},
+  {"question": "Qual o teto anual de reajuste do contrato de aço?", "expect": [{"title": "Contrato de Fornecimento - Aços Vale Forte", "page": 2}, {"title": "Parecer Jurídico - Cláusula de Reajuste", "page": 1}], "answer_contains": ["8%"]},
+
+  {"question": "Qual o salário do diretor financeiro?", "expect": [], "answer_contains": []},
+  {"question": "Qual é a capital da Austrália?", "expect": [], "answer_contains": []},
+  {"question": "Qual a pressão máxima do compressor CX-300?", "expect": [], "answer_contains": []},
+  {"question": "Qual o prazo de garantia da prensa hidráulica PH-02?", "expect": [], "answer_contains": []}
+]

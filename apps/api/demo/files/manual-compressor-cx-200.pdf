@@ -1,0 +1,120 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 712 >>
+stream
+BT
+/F1 10 Tf
+13 TL
+40 800 Td
+(MANUAL DO COMPRESSOR CX-200 - REVISÃO 4) Tj T*
+(NovaForja Industrial - Engenharia de Manutenção) Tj T*
+(1. Apresentação) Tj T*
+(O compressor de parafuso CX-200 fornece ar comprimido para as linhas de estampagem e de) Tj T*
+(pintura da planta de Betim. Este manual descreve operação, manutenção e garantia.) Tj T*
+(2. Especificações técnicas) Tj T*
+(Pressão máxima de trabalho: 10 bar.) Tj T*
+(Vazão nominal: 32 m³/min a 8 bar.) Tj T*
+(Potência do motor: 200 kW \(tensão de 440 V trifásica\).) Tj T*
+(Temperatura máxima de descarga do ar: 105 °C.) Tj T*
+(Nível de ruído: 78 dB\(A\) a um metro, com a carenagem fechada.) Tj T*
+(Capacidade do reservatório de óleo: 45 litros.) Tj T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 659 >>
+stream
+BT
+/F1 10 Tf
+13 TL
+40 800 Td
+(3. Operação) Tj T*
+(A partida é feita pelo painel frontal, com o registro de saída fechado. Aguarde a pressão) Tj T*
+(de óleo estabilizar em 3 bar antes de abrir o registro. A parada normal exige o ciclo de) Tj T*
+(alívio de pressão: o compressor trabalha em vazio por 30 segundos antes de desligar.) Tj T*
+(3.1 Parada de emergência) Tj T*
+(O botão de emergência corta a alimentação do motor imediatamente. Depois do acionamento,) Tj T*
+(não religue o equipamento antes de a Engenharia de Manutenção inspecionar o motivo da) Tj T*
+(parada. A temperatura de descarga acima de 110 °C desarma o compressor automaticamente.) Tj T*
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 667 >>
+stream
+BT
+/F1 10 Tf
+13 TL
+40 800 Td
+(4. Manutenção preventiva) Tj T*
+(Os intervalos abaixo valem para operação em ambiente com poeira normal.) Tj T*
+(Troca do filtro de ar: a cada 2.000 horas de operação.) Tj T*
+(Troca do filtro de óleo: a cada 4.000 horas de operação.) Tj T*
+(Troca do óleo sintético: a cada 8.000 horas, ou uma vez por ano, o que vier primeiro.) Tj T*
+(Troca do elemento separador de óleo: a cada 6.000 horas.) Tj T*
+(Inspeção das correias e acoplamentos: a cada 1.000 horas.) Tj T*
+(Calibração da válvula de segurança: uma vez por ano, por laboratório credenciado.) Tj T*
+(Todo serviço deve ser registrado na ficha de manutenção do equipamento.) Tj T*
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 11 0 R >>
+endobj
+11 0 obj
+<< /Length 782 >>
+stream
+BT
+/F1 10 Tf
+13 TL
+40 800 Td
+(5. Garantia) Tj T*
+(O prazo de garantia é de 24 meses a partir da data de instalação, limitado a 12.000 horas) Tj T*
+(de operação. A garantia depende do cumprimento das manutenções preventivas do capítulo 4,) Tj T*
+(registradas na ficha de manutenção. A garantia não cobre desgaste natural de filtros e) Tj T*
+(correias, nem danos causados por óleo diferente do especificado.) Tj T*
+(6. Falhas comuns) Tj T*
+(Temperatura alta de descarga: verifique o nível de óleo e a limpeza do radiador.) Tj T*
+(Pressão que não sobe: verifique vazamentos e o estado da válvula de admissão.) Tj T*
+(Consumo de óleo elevado: substitua o elemento separador de óleo.) Tj T*
+(Contato do suporte técnico do fabricante: 0800 555 0123, em dias úteis das 8h às 18h.) Tj T*
+ET
+endstream
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000134 00000 n 
+0000000231 00000 n 
+0000000357 00000 n 
+0000001120 00000 n 
+0000001246 00000 n 
+0000001956 00000 n 
+0000002082 00000 n 
+0000002800 00000 n 
+0000002928 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+3762
+%%EOF

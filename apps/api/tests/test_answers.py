@@ -13,6 +13,7 @@ from app.ai.answers import (
     build_answer_provider,
 )
 from app.core.config import Settings
+from app.rag.prompt import NOT_FOUND_ANSWER
 
 pytestmark = pytest.mark.anyio
 
@@ -26,7 +27,9 @@ def _no_retry_delay(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 PROMPT = AnswerPrompt(
-    system="regras", user="pergunta", sources=["Fonte um. Segunda frase. Terceira."]
+    system="regras",
+    user="Pergunta: Qual o prazo de garantia?",
+    sources=["O prazo de garantia é de 24 meses. Segunda frase."],
 )
 
 
@@ -46,8 +49,45 @@ def _sse(*events: dict[str, object]) -> bytes:
     return b"".join(b"data: " + json.dumps(event).encode() + b"\r\n\r\n" for event in events)
 
 
-async def test_extractive_provider_cites_the_first_source() -> None:
-    assert (await _collect(ExtractiveAnswerProvider())).strip() == "Fonte um. Segunda frase. [S1]"
+def _extractive_prompt(question: str, *sources: str) -> AnswerPrompt:
+    user = f"Fontes: ...\n\nPergunta: {question}"
+    return AnswerPrompt(system="regras", user=user, sources=sources)
+
+
+async def _extract(question: str, *sources: str) -> str:
+    provider = ExtractiveAnswerProvider()
+    prompt = _extractive_prompt(question, *sources)
+    return "".join([delta async for delta in provider.stream(prompt)]).strip()
+
+
+MANUAL = (
+    "Pressão máxima de trabalho: 10 bar.\nVazão nominal: 32 m³/min a 8 bar.",
+    "5. Garantia\nO prazo de garantia é de 24 meses a partir da data de instalação. "
+    "A garantia depende das manutenções preventivas.",
+)
+
+
+async def test_extractive_provider_cites_the_sentence_that_answers() -> None:
+    answer = await _extract("Qual o prazo de garantia do compressor?", *MANUAL)
+
+    assert answer == "O prazo de garantia é de 24 meses a partir da data de instalação. [S2]"
+
+
+async def test_extractive_provider_refuses_when_no_sentence_covers_the_question() -> None:
+    answer = await _extract("Qual o salário do diretor financeiro?", *MANUAL)
+
+    assert answer == NOT_FOUND_ANSWER
+
+
+async def test_extractive_provider_refuses_a_different_model_code() -> None:
+    cx200 = ("O CX-200 tem pressão máxima de trabalho de 10 bar.",)
+
+    assert (
+        await _extract("Qual a pressão máxima de trabalho do CX-200?", *cx200) != NOT_FOUND_ANSWER
+    )
+    assert (
+        await _extract("Qual a pressão máxima de trabalho do CX-300?", *cx200) == NOT_FOUND_ANSWER
+    )
 
 
 async def test_gemini_streams_text_parts_and_skips_thoughts() -> None:
@@ -76,7 +116,7 @@ async def test_gemini_streams_text_parts_and_skips_thoughts() -> None:
     assert request.headers["x-goog-api-key"] == "chave-teste"
     body = json.loads(request.content)
     assert body["systemInstruction"]["parts"][0]["text"] == "regras"
-    assert body["contents"][0]["parts"][0]["text"] == "pergunta"
+    assert body["contents"][0]["parts"][0]["text"] == PROMPT.user
 
 
 @pytest.mark.parametrize(
@@ -120,4 +160,4 @@ async def test_fallback_answers_extractively_when_the_primary_is_down() -> None:
 
     text = await _collect(FallbackAnswerProvider(primary, ExtractiveAnswerProvider()))
 
-    assert text.strip() == "Fonte um. Segunda frase. [S1]"
+    assert text.strip() == "O prazo de garantia é de 24 meses. [S1]"

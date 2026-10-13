@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import re
+import unicodedata
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -49,20 +50,113 @@ class AnswerProvider(Protocol):
     async def aclose(self) -> None: ...
 
 
-_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+|\n+")
+_WORD = re.compile(r"[a-z0-9]+")
+# Códigos de equipamento como "cx-200" ou "ph-02": se a pergunta cita um, a fonte precisa tê-lo.
+_CODE = re.compile(r"\b[a-z]{1,4}-?\d{1,4}\b")
+_STOPWORDS = frozenset(
+    [
+        "qual",
+        "quais",
+        "quem",
+        "quando",
+        "onde",
+        "como",
+        "quanto",
+        "quantos",
+        "quantas",
+        "para",
+        "pelo",
+        "pela",
+        "pelos",
+        "pelas",
+        "uma",
+        "uns",
+        "umas",
+        "que",
+        "por",
+        "com",
+        "sem",
+        "sobre",
+        "entre",
+        "ate",
+        "dos",
+        "das",
+        "nos",
+        "nas",
+        "mais",
+        "menos",
+        "foi",
+        "sao",
+        "ser",
+        "tem",
+        "tinha",
+        "deve",
+        "devem",
+        "essa",
+        "esse",
+        "isso",
+        "esta",
+        "este",
+        "isto",
+        "aos",
+    ]
+)
+_MIN_COVERAGE = 0.6
+
+
+def _fold(text: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", text.casefold())
+    return "".join(char for char in decomposed if not unicodedata.combining(char))
+
+
+def _stems(text: str) -> set[str]:
+    return {
+        word[:5]
+        for word in _WORD.findall(_CODE.sub(" ", _fold(text)))
+        if len(word) >= 3 and word not in _STOPWORDS and not word.isdigit()
+    }
+
+
+def _question_of(prompt: AnswerPrompt) -> str:
+    return prompt.user.rsplit("Pergunta:", 1)[-1].strip()
 
 
 class ExtractiveAnswerProvider:
-    """Responde sem modelo de linguagem: devolve as primeiras frases da fonte mais relevante,
-    citada. Não sintetiza nem raciocina; existe para desenvolver e testar sem chave de API."""
+    """Responde sem modelo de linguagem: devolve a frase das fontes que mais cobre a pergunta,
+    citada, ou recusa quando nenhuma cobre o bastante. Não sintetiza nem raciocina; serve para
+    desenvolver sem chave de API e como reserva quando o modelo está indisponível."""
 
-    model = "extractive-v1"
+    model = "extractive-v2"
 
     async def stream(self, prompt: AnswerPrompt) -> AsyncIterator[str]:
-        sentences = _SENTENCE_END.split(" ".join(prompt.sources[0].split()))
-        answer = " ".join(sentences[:2]) + " [S1]"
+        answer = self._best_sentence(_question_of(prompt), prompt.sources)
+        if answer is None:
+            from app.rag.prompt import NOT_FOUND_ANSWER
+
+            answer = NOT_FOUND_ANSWER
         for word in answer.split(" "):
             yield word + " "
+
+    @staticmethod
+    def _best_sentence(question: str, sources: Sequence[str]) -> str | None:
+        wanted = _stems(question)
+        codes = set(_CODE.findall(_fold(question)))
+        if not wanted:
+            return None
+        best: tuple[float, int, str] | None = None
+        for marker, source in enumerate(sources, start=1):
+            if not all(code in _fold(source) for code in codes):
+                continue
+            for sentence in _SENTENCE_END.split(source):
+                covered = len(wanted & _stems(sentence))
+                coverage = covered / len(wanted)
+                if covered >= 2 and coverage >= _MIN_COVERAGE and (not best or coverage > best[0]):
+                    best = (coverage, marker, sentence.strip())
+        if best is None:
+            return None
+        _, marker, sentence = best
+        return f"{sentence} [S{marker}]"
 
     async def aclose(self) -> None:
         return None

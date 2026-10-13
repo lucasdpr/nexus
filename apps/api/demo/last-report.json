@@ -1,0 +1,16 @@
+{
+  "busca": {
+    "perguntas_com_resposta": 18,
+    "acerto@1": 0.7777777777777778,
+    "acerto@3": 0.9444444444444444,
+    "acerto@5": 1.0,
+    "mrr": 0.875,
+    "sem_resposta_sem_trechos": 0.25
+  },
+  "resposta": {
+    "respondeu": 0.8333333333333334,
+    "citou_fonte_esperada": 0.7777777777777778,
+    "resposta_traz_o_fato": 0.5,
+    "recusou_sem_resposta": 0.0
+  }
+}
