@@ -16,7 +16,7 @@ from app.core.errors import AuthenticationError, ConflictError, NotFoundError, R
 from app.core.security import hash_password, hash_token, new_session_token, verify_password
 from app.modules.audit import service as audit
 from app.modules.auth.identity import ClientInfo, CurrentUser, LoginResult
-from app.modules.auth.models import LoginAttempt, UserSession
+from app.modules.auth.models import LoginAttempt, SignupAttempt, UserSession
 from app.modules.auth.schemas import MeResponse, OrganizationOut, SignupRequest
 from app.modules.organizations.models import Organization
 from app.modules.users.models import Role, User, UserStatus
@@ -25,6 +25,7 @@ from app.modules.users.service import EMAIL_TAKEN
 
 INVALID_CREDENTIALS = "E-mail ou senha incorretos."
 TOO_MANY_ATTEMPTS = "Muitas tentativas de login. Aguarde alguns minutos."
+TOO_MANY_SIGNUPS = "Muitos cadastros partiram deste endereço. Tente de novo mais tarde."
 
 _FIND_USER = text("select user_id, org_id, password_hash, status from auth_find_user(:email)")
 _RESOLVE_SESSION = text(
@@ -65,6 +66,7 @@ async def signup(
 ) -> LoginResult:
     org_id, user_id = uuid7(), uuid7()
     await set_tenant(db, org_id, user_id)
+    await _ensure_signup_allowed(db, client, settings)
 
     password_hash = await asyncio.to_thread(hash_password, data.password)
     db.add(
@@ -93,6 +95,24 @@ async def signup(
     audit.record(db, org_id=org_id, actor_id=user_id, action="auth.signup", ip=client.ip)
     await db.commit()
     return LoginResult(token, device_token, CurrentUser(user_id, org_id, Role.ADMIN, session.id))
+
+
+async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings: Settings) -> None:
+    """Limita contas novas por IP. A tentativa é gravada e confirmada antes de qualquer outra
+    coisa, para contar mesmo quando o cadastro é recusado (e-mail já usado)."""
+    bucket = _ip_bucket(client.ip)
+    if bucket is None:
+        return
+    since = _now() - timedelta(hours=1)
+    recent = await db.scalar(
+        select(func.count())
+        .select_from(SignupAttempt)
+        .where(SignupAttempt.ip == bucket, SignupAttempt.created_at >= since)
+    )
+    if (recent or 0) >= settings.signup_max_per_ip_per_hour:
+        raise RateLimitedError(TOO_MANY_SIGNUPS)
+    db.add(SignupAttempt(ip=bucket))
+    await db.commit()
 
 
 def _ip_bucket(ip: str | None) -> str | None:

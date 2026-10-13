@@ -211,3 +211,31 @@ async def test_demo_login_enters_demo_organization_as_member(
     assert response.json()["organization"]["is_demo"] is True
     collections = await client.get("/api/v1/collections")
     assert len(collections.json()) == 4
+
+
+async def test_signups_are_limited_per_ip_and_refused_attempts_count(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "signup_max_per_ip_per_hour", 2)
+    ip = "198.51.100.77"
+    payload = {
+        "organization_name": "Empresa Limite",
+        "name": "Pessoa Limite",
+        "email": unique_email(),
+        "password": PASSWORD,
+    }
+
+    first = await make_client(ip).post("/api/v1/auth/signup", json=payload)
+    # E-mail repetido: recusado, mas a tentativa conta para o limite do IP.
+    repeated = await make_client(ip).post("/api/v1/auth/signup", json=payload)
+    blocked = await make_client(ip).post(
+        "/api/v1/auth/signup", json=payload | {"email": unique_email()}
+    )
+    elsewhere = await make_client("198.51.100.78").post(
+        "/api/v1/auth/signup", json=payload | {"email": unique_email()}
+    )
+
+    assert first.status_code == 201
+    assert repeated.status_code == 409
+    assert blocked.status_code == 429
+    assert elsewhere.status_code == 201

@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clientip import client_ip
 from app.core.config import Settings, get_settings
 from app.core.db import set_tenant
 from app.core.errors import AuthenticationError, ForbiddenError
@@ -26,7 +27,7 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 def get_client_info(request: Request) -> ClientInfo:
     return ClientInfo(
-        ip=request.client.host if request.client else None,
+        ip=client_ip(request, get_settings().effective_proxy_hops),
         user_agent=request.headers.get("user-agent"),
         device_token=request.cookies.get(DEVICE_COOKIE),
     )

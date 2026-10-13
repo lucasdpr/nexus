@@ -41,3 +41,12 @@ class LoginAttempt(IdMixin, CreatedAtMixin, Base):
     success: Mapped[bool]
     # Hash do cookie de dispositivo: reconhece o navegador onde a conta já entrou com sucesso.
     device_hash: Mapped[bytes | None] = mapped_column(LargeBinary(32))
+
+
+class SignupAttempt(IdMixin, CreatedAtMixin, Base):
+    """Cadastros por IP, usados para limitar a criação de contas em massa."""
+
+    __tablename__ = "signup_attempts"
+    __table_args__ = (Index("ix_signup_attempts_ip_created", "ip", "created_at"),)
+
+    ip: Mapped[str] = mapped_column(String(64))

@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     login_max_failures_per_account_ip: int = 5
     login_max_failures_per_ip: int = 50
     login_max_failures_per_account: int = 20
+    # Contas novas por IP (agrupado como nos logins) a cada hora, contando tentativas
+    # recusadas também, para não servir de teste de quais e-mails já existem.
+    signup_max_per_ip_per_hour: int = 5
+    # Quantos proxies confiáveis ficam entre o cliente e a API (lê o IP de X-Forwarded-For
+    # a partir da direita). Sem valor: 2 em produção (Vercel e Render) e 0 fora dela.
+    trusted_proxy_hops: int | None = None
     login_known_client_days: int = 30
 
     demo_enabled: bool = True
@@ -112,6 +118,12 @@ class Settings(BaseSettings):
     def direct_upload_url(self) -> str | None:
         base = (self.public_api_url or self.render_external_url).rstrip("/")
         return f"{base}/api/v1/documents/direct" if base else None
+
+    @property
+    def effective_proxy_hops(self) -> int:
+        if self.trusted_proxy_hops is not None:
+            return self.trusted_proxy_hops
+        return 2 if self.environment == "production" else 0
 
     @property
     def cookie_secure(self) -> bool:

@@ -22,6 +22,8 @@ TEST_DATABASE_URL = _TestEnv().test_database_url
 os.environ["ENVIRONMENT"] = "test"
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL or "postgresql://sem-banco@localhost/sem-banco"
 os.environ["LOGIN_MAX_FAILURES_PER_IP"] = "1000"
+# Os testes criam muitas contas do mesmo IP; o teste do limite o reduz por conta própria.
+os.environ["SIGNUP_MAX_PER_IP_PER_HOUR"] = "100000"
 os.environ["STORAGE_LOCAL_PATH"] = tempfile.mkdtemp(prefix="nexus-test-storage-")
 os.environ["EMBEDDING_PROVIDER"] = "hashing"
 # Os testes nunca chamam provedores de IA reais, mesmo com chaves no .env.

@@ -3,7 +3,7 @@
 from app.core.models import Base
 from app.jobs.models import Job
 from app.modules.audit.models import AuditEvent
-from app.modules.auth.models import LoginAttempt, UserSession
+from app.modules.auth.models import LoginAttempt, SignupAttempt, UserSession
 from app.modules.chat.models import Citation, Conversation, Message
 from app.modules.collections.models import Collection, CollectionMember
 from app.modules.documents.models import Chunk, Document, ProcessingStep
@@ -24,6 +24,7 @@ __all__ = [
     "Message",
     "Organization",
     "ProcessingStep",
+    "SignupAttempt",
     "User",
     "UserSession",
 ]
