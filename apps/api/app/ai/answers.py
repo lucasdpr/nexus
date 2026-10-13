@@ -283,12 +283,14 @@ def build_answer_provider(settings: Settings) -> AnswerProvider:
         api_key = settings.gemini_api_key.get_secret_value() if settings.gemini_api_key else ""
         if not api_key:
             raise RuntimeError("ANSWER_PROVIDER=gemini exige GEMINI_API_KEY.")
-        return FallbackAnswerProvider(
-            GeminiAnswerProvider(
-                api_key,
-                settings.gemini_model,
-                settings.answer_max_output_tokens,
-            ),
-            ExtractiveAnswerProvider(),
-        )
+        # Cadeia: modelo principal, depois cada modelo reserva, por fim a resposta extrativa.
+        models = [
+            settings.gemini_model,
+            *(m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip()),
+        ]
+        provider: AnswerProvider = ExtractiveAnswerProvider()
+        for model in reversed(models):
+            gemini = GeminiAnswerProvider(api_key, model, settings.answer_max_output_tokens)
+            provider = FallbackAnswerProvider(gemini, provider)
+        return provider
     return ExtractiveAnswerProvider()

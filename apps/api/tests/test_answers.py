@@ -161,3 +161,12 @@ async def test_fallback_answers_extractively_when_the_primary_is_down() -> None:
     text = await _collect(FallbackAnswerProvider(primary, ExtractiveAnswerProvider()))
 
     assert text.strip() == "O prazo de garantia é de 24 meses. [S1]"
+
+
+async def test_fallback_chain_tries_the_next_model_before_the_extractive_answer() -> None:
+    down = _gemini(httpx2.MockTransport(lambda _: httpx2.Response(503)))
+    body = _sse({"candidates": [{"content": {"parts": [{"text": "do segundo modelo [S1]"}]}}]})
+    second = _gemini(httpx2.MockTransport(lambda _: httpx2.Response(200, content=body)))
+    chain = FallbackAnswerProvider(down, FallbackAnswerProvider(second, ExtractiveAnswerProvider()))
+
+    assert await _collect(chain) == "do segundo modelo [S1]"

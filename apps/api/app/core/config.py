@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     # gemini-3.8-flash é mais novo, mas não respondeu em 90 s no plano gratuito (out/2026).
     gemini_model: str = "gemini-3.5-flash"
+    # Modelos tentados, em ordem, quando o principal responde 503 ou 429 (separados por vírgula).
+    gemini_fallback_models: str = "gemini-3.8-flash"
     answer_max_output_tokens: int = 2048
 
     # Busca híbrida: candidatos de cada busca, fusão por posição e contexto enviado à IA.
