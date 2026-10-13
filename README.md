@@ -4,20 +4,26 @@ Plataforma de inteligência documental: documentos corporativos viram uma base d
 conhecimento pesquisável, com respostas de IA fundamentadas em fontes verificáveis
 (documento e página).
 
-> **Em construção.** Concluídas as fases 0 (fundação), 1 (organizações, autenticação, papéis,
-> coleções e auditoria), 2 (ingestão de documentos com fila de processamento) e 3 (busca
-> híbrida e assistente com respostas citando documento e página). O plano completo, com arquitetura,
-> modelo de dados, fluxo RAG e decisões técnicas, está em [docs/PLANO.md](docs/PLANO.md).
+**Demonstração:** https://nexus-lucasdpr.vercel.app (organização fictícia; use "Entrar como
+visitante"). A página [/about-project](https://nexus-lucasdpr.vercel.app/about-project) explica
+as decisões técnicas, o que foi medido e o que ainda não funciona.
+
+> **Em construção.** Concluídas a fundação, organizações, autenticação, papéis, coleções e
+> auditoria, a ingestão de documentos com fila, a busca híbrida, o assistente com citações, o
+> visualizador com o trecho grifado, busca global (Ctrl+K), painel, telas de auditoria e
+> usuários, landing page, avaliação do RAG e o redesign "Vibrant Liquid Glass". Faltam
+> armazenamento S3 para os arquivos, embeddings do Voyage AI, dashboard de coleções e a
+> revisão final. O plano completo está em [docs/PLANO.md](docs/PLANO.md).
 
 ## Stack
 
 | Camada | Tecnologia |
 |---|---|
-| Web | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| Web | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Motion |
 | API | Python 3.14, FastAPI, Pydantic, SQLAlchemy 2 (async), Alembic |
 | Banco | PostgreSQL 17 + pgvector, Row-Level Security |
 | IA | Gemini (respostas) e Voyage AI (embeddings), atrás de interfaces próprias |
-| Infra | Docker Compose, GitHub Actions, Neon |
+| Infra | Docker Compose, GitHub Actions, Neon, Vercel (web), Render (API) |
 
 ## Estrutura
 
@@ -34,6 +40,7 @@ apps/
   web/   Next.js
 docs/    plano e decisões
 scripts/ teste de fumaça do ambiente completo
+apps/api/demo  documentos fictícios, envio pela API e avaliação do RAG
 ```
 
 ## Pipeline de documentos
@@ -126,6 +133,24 @@ cd apps/web
 npm install
 npm run dev
 ```
+
+## Avaliação do RAG
+
+`apps/api/demo` traz 7 documentos fictícios (PDF e DOCX) e 22 perguntas com resposta conhecida:
+18 respondidas pelos documentos e 4 sem resposta, incluindo armadilhas como perguntar pelo
+modelo CX-300 quando só existe o CX-200.
+
+```bash
+cd apps/api
+python -m demo.build                       # gera os arquivos em demo/files
+NEXUS_URL=https://seu-site NEXUS_PASSWORD=... python -m demo.upload
+NEXUS_URL=https://seu-site NEXUS_PASSWORD=... python -m demo.evaluate --chat
+```
+
+Mede, na busca, em que posição aparece o trecho certo (acerto@1, @5 e MRR) e, nas respostas,
+se o assistente respondeu, citou o documento e a página esperados, trouxe o fato e recusou o
+que não tem resposta. Com os embeddings locais atuais, o trecho certo aparece em 1º lugar em
+78% das perguntas e entre os 5 primeiros em 100%.
 
 ## Qualidade
 
