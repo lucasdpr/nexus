@@ -122,7 +122,7 @@ function CitationPill({
         transition={SPRING}
         aria-label={preview?.title ? `Fonte ${marker}: ${preview.title}` : `Ver fonte ${marker}`}
         className={cn(
-          "mx-0.5 inline-grid h-[19px] min-w-[22px] place-items-center rounded-full bg-gradient-to-r from-neon-violet to-neon-indigo px-1.5 align-[2px] text-[11px] font-semibold text-white shadow-[0_0_12px_-2px_var(--neon-violet)]",
+          "mx-0.5 inline-grid h-[19px] min-w-[22px] place-items-center rounded-full bg-gradient-to-r from-[#a21fe6] to-[#4f52d9] px-1.5 align-[2px] text-[11px] font-semibold text-white shadow-[0_0_12px_-2px_var(--neon-violet)]",
           active && "ring-2 ring-neon-cyan ring-offset-2 ring-offset-background",
         )}
       >
