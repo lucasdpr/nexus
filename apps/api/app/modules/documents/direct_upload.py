@@ -71,8 +71,12 @@ def read_token(settings: Settings, token: str, *, now: float | None = None) -> C
         return None
 
 
-async def still_authorized(db: AsyncSession, current: CurrentUser) -> bool:
-    """A sessão que gerou o token segue ativa e o usuário continua habilitado."""
+async def refresh_authorization(db: AsyncSession, current: CurrentUser) -> CurrentUser | None:
+    """O mesmo usuário com o papel de agora, se a sessão do token segue ativa e ele está habilitado.
+
+    O papel do token pode estar desatualizado (quem foi rebaixado depois de pedi-lo), por isso
+    o que vale é o do banco.
+    """
     await set_tenant(db, current.org_id, current.user_id)
     session = await db.scalar(
         select(UserSession.id).where(
@@ -84,8 +88,14 @@ async def still_authorized(db: AsyncSession, current: CurrentUser) -> bool:
         )
     )
     if session is None:
-        return False
-    status = await db.scalar(
-        select(User.status).where(User.org_id == current.org_id, User.id == current.user_id)
-    )
-    return status == UserStatus.ACTIVE
+        return None
+    user = (
+        await db.execute(
+            select(User.status, User.role).where(
+                User.org_id == current.org_id, User.id == current.user_id
+            )
+        )
+    ).one_or_none()
+    if user is None or user.status != UserStatus.ACTIVE:
+        return None
+    return CurrentUser(current.user_id, current.org_id, Role(user.role), current.session_id)

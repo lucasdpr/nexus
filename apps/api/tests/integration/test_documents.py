@@ -451,3 +451,26 @@ async def test_other_origins_get_no_cors_headers_on_direct_upload(
     )
 
     assert "access-control-allow-origin" not in response.headers
+
+
+async def test_direct_upload_uses_the_role_the_user_has_now_not_the_one_in_the_token(
+    make_client: ClientFactory,
+) -> None:
+    admin = await signup(make_client)
+    collection_id = await _collection(admin)
+    manager = await add_user(admin, make_client, "MANAGER")
+    token = (await manager.client.post("/api/v1/documents/upload-token")).json()["token"]
+    demoted = await admin.client.patch(
+        f"/api/v1/users/{manager.me['user']['id']}", json={"role": "MEMBER"}
+    )
+    assert demoted.status_code == 200, demoted.text
+
+    response = await make_client().post(
+        "/api/v1/documents/direct",
+        headers={"Origin": get_settings().web_origin},
+        data={"token": token, "collection_id": collection_id},
+        files={"file": ("manual.pdf", MANUAL, "application/pdf")},
+    )
+
+    # Recusado: 403 ou 404 (o sistema não revela a existência de coleções que a pessoa não vê).
+    assert response.status_code in (403, 404)

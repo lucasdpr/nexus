@@ -5,7 +5,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel
 
-from app.core.db import set_tenant
 from app.core.errors import AuthenticationError, PayloadTooLargeError
 from app.modules.auth.dependencies import Client, CurrentUserDep, DbSession, SettingsDep
 from app.modules.documents import direct_upload, repository, service
@@ -65,10 +64,10 @@ async def upload_document_direct(
     title: Annotated[str | None, Form(max_length=200)] = None,
 ) -> DocumentDetail:
     """Mesmo envio da rota normal, autenticado pelo token em vez do cookie de sessão."""
-    current = direct_upload.read_token(settings, token)
-    if current is None or not await direct_upload.still_authorized(db, current):
+    issued = direct_upload.read_token(settings, token)
+    current = await direct_upload.refresh_authorization(db, issued) if issued else None
+    if current is None:
         raise AuthenticationError("O token de envio expirou. Tente enviar o arquivo de novo.")
-    await set_tenant(db, current.org_id, current.user_id)
     return await upload_document(db, current, client, settings, storage, file, collection_id, title)
 
 
