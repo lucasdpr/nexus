@@ -95,7 +95,7 @@ export default function AboutProjectPage() {
           <code className="rounded-sm bg-muted px-1 py-0.5 text-[13px]">python -m demo.evaluate --chat</code>.
         </p>
         <table className="mt-5 w-full text-left text-[15px]">
-          <caption className="sr-only">Resultado da busca na avaliação</caption>
+          <caption className="sr-only">Resultado da busca e das respostas na avaliação</caption>
           <tbody className="divide-y divide-border border-y border-border">
             <tr>
               <th scope="row" className="py-2.5 font-normal">Trecho certo em 1º lugar</th>
@@ -110,6 +110,14 @@ export default function AboutProjectPage() {
               <td className="py-2.5 text-right font-semibold tabular-nums">
                 {EVALUATION.search.mrr.toFixed(3).replace(".", ",")}
               </td>
+            </tr>
+            <tr>
+              <th scope="row" className="py-2.5 font-normal">Respostas certas, com documento, página e fato certos</th>
+              <td className="py-2.5 text-right font-semibold tabular-nums">{percent(EVALUATION.answers.correct)}</td>
+            </tr>
+            <tr>
+              <th scope="row" className="py-2.5 font-normal">Perguntas sem resposta recusadas, sem inventar</th>
+              <td className="py-2.5 text-right font-semibold tabular-nums">{percent(EVALUATION.answers.refused)}</td>
             </tr>
           </tbody>
         </table>

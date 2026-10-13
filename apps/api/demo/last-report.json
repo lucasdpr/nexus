@@ -9,8 +9,8 @@
   },
   "resposta": {
     "respondeu": 0.8333333333333334,
-    "citou_fonte_esperada": 0.7777777777777778,
-    "resposta_traz_o_fato": 0.5,
-    "recusou_sem_resposta": 0.0
+    "citou_fonte_esperada": 0.8333333333333334,
+    "resposta_traz_o_fato": 0.8333333333333334,
+    "recusou_sem_resposta": 1.0
   }
 }

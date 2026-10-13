@@ -92,11 +92,12 @@ export default async function Home() {
             {EVALUATION.answerable} com resposta nos documentos e {EVALUATION.unanswerable} sem. A
             busca usa embeddings {EVALUATION.embeddings}.
           </p>
-          <dl className="mt-8 grid max-w-3xl gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-3">
+          <dl className="mt-8 grid max-w-4xl gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {[
               ["Trecho certo em 1º lugar", percent(EVALUATION.search.top1)],
               ["Trecho certo entre os 5 primeiros", percent(EVALUATION.search.top5)],
-              ["Posição média inversa (MRR)", EVALUATION.search.mrr.toFixed(2).replace(".", ",")],
+              ["Respostas certas, com a fonte certa", percent(EVALUATION.answers.correct)],
+              ["Perguntas sem resposta recusadas", percent(EVALUATION.answers.refused)],
             ].map(([label, value]) => (
               <div key={label} className="bg-card px-4 py-4">
                 <dt className="text-[13px] text-muted-foreground">{label}</dt>
