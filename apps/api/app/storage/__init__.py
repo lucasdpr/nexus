@@ -4,6 +4,8 @@ import asyncio
 from pathlib import Path
 from typing import Protocol
 
+from sqlalchemy.ext.asyncio import AsyncEngine
+
 from app.core.config import Settings
 
 
@@ -40,10 +42,15 @@ class LocalStorage:
         await asyncio.to_thread(self._path(key).unlink, missing_ok=True)
 
 
-def build_storage(settings: Settings) -> Storage:
+def build_storage(settings: Settings, engine: AsyncEngine) -> Storage:
     """Escolhe o armazenamento pela configuração; falta de dado do S3 falha na partida."""
-    if settings.storage_backend == "local":
+    backend = settings.effective_storage_backend
+    if backend == "local":
         return LocalStorage(settings.storage_local_path)
+    if backend == "db":
+        from app.storage.database import DatabaseStorage
+
+        return DatabaseStorage(engine)
 
     from app.storage.s3 import S3Storage
 

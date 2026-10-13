@@ -41,7 +41,9 @@ class Settings(BaseSettings):
 
     # Arquivos enviados: disco local (desenvolvimento) ou serviço compatível com S3 (produção;
     # o disco de hospedagens gratuitas é apagado a cada reinício).
-    storage_backend: Literal["local", "s3"] = "local"
+    # Sem valor: "db" em produção (arquivos no Postgres, duráveis sem configurar nada) e
+    # "local" no desenvolvimento.
+    storage_backend: Literal["local", "s3", "db"] | None = None
     storage_local_path: Path = API_DIR / "var" / "storage"
     s3_endpoint_url: str = ""
     s3_bucket: str = ""
@@ -94,6 +96,12 @@ class Settings(BaseSettings):
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
+
+    @property
+    def effective_storage_backend(self) -> Literal["local", "s3", "db"]:
+        if self.storage_backend:
+            return self.storage_backend
+        return "db" if self.environment == "production" else "local"
 
     @property
     def cookie_secure(self) -> bool:

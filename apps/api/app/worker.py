@@ -22,7 +22,7 @@ async def main() -> None:
     engine = create_engine(settings.database_url.get_secret_value())
     sessionmaker = create_sessionmaker(engine)
     embedder = build_embedding_provider(settings)
-    context = IngestionContext(sessionmaker, build_storage(settings), embedder, settings)
+    context = IngestionContext(sessionmaker, build_storage(settings, engine), embedder, settings)
     stop = asyncio.Event()
     try:
         await Worker(sessionmaker, job_handlers(context), settings).run_forever(stop)

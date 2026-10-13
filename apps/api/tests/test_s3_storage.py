@@ -5,6 +5,7 @@ import pytest
 from pydantic import SecretStr
 
 from app.core.config import Settings
+from app.core.db import create_engine
 from app.storage import build_storage
 from app.storage.s3 import S3Storage, StorageError, sign_v4
 
@@ -116,9 +117,24 @@ def test_s3_backend_fails_at_startup_when_settings_are_missing() -> None:
     settings = Settings(database_url=SecretStr("postgresql://x@y/z"), storage_backend="s3")
 
     with pytest.raises(RuntimeError, match="S3_BUCKET"):
-        build_storage(settings)
+        build_storage(settings, create_engine("postgresql://x@y/z"))
 
 
 def test_s3_endpoint_must_be_a_full_url() -> None:
     with pytest.raises(ValueError, match="URL completa"):
         S3Storage(endpoint_url="conta.r2", bucket="b", access_key_id="a", secret_access_key="s")
+
+
+def test_storage_defaults_to_the_database_in_production_and_to_disk_otherwise() -> None:
+    url = SecretStr("postgresql://x@y/z")
+
+    assert Settings(database_url=url, environment="production").effective_storage_backend == "db"
+    assert (
+        Settings(database_url=url, environment="development").effective_storage_backend == "local"
+    )
+    assert (
+        Settings(
+            database_url=url, environment="production", storage_backend="local"
+        ).effective_storage_backend
+        == "local"
+    )

@@ -74,12 +74,21 @@ jobs:
           password="$(openssl rand -hex 16)"
           echo "::add-mask::$password"
           echo "SEED_ADMIN_PASSWORD=$password" >> "$GITHUB_ENV"
-      - run: docker compose build
-      - run: docker compose up -d --wait
+      # Cada etapa grava a saída em arquivo; se algo falhar, o fim de cada arquivo vira uma
+      # anotação do GitHub, legível pela API pública (sem entrar na página de logs).
+      - name: Construir as imagens
+        run: docker compose build 2>&1 | tee build.log
+      - name: Subir o ambiente
+        run: docker compose up -d --wait 2>&1 | tee up.log
       - name: Smoke test (web → proxy → api → banco → worker)
-        run: bash scripts/smoke-test.sh
-      - name: Logs dos serviços
+        run: bash scripts/smoke-test.sh 2>&1 | tee smoke.log
+      - name: Explicar a falha
         if: failure()
-        run: docker compose logs --no-color
+        run: |
+          docker compose logs --no-color --tail=80 > services.log 2>&1 || true
+          for log in build up smoke services; do
+            [ -s "$log.log" ] && bash scripts/ci-annotate.sh "$log.log" "docker/$log"
+          done
+          true
       - if: always()
         run: docker compose down -v

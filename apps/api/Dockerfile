@@ -21,4 +21,6 @@ RUN useradd --create-home --uid 10001 nexus \
 USER nexus
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Aplica as migrações pendentes antes de subir (idempotente), então publicar um commit com
+# migração não exige passo manual. PORT é definida por hospedagens como o Render.
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

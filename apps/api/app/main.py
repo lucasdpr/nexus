@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     engine = create_engine(settings.database_url.get_secret_value())
     app.state.sessionmaker = create_sessionmaker(engine)
-    app.state.storage = build_storage(settings)
+    app.state.storage = build_storage(settings, engine)
     app.state.embedder = build_embedding_provider(settings)
     app.state.answerer = build_answer_provider(settings)
 
