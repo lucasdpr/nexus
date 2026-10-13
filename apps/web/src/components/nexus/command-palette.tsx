@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { FileText, LibraryBig, MessageSquareText, Search, ScrollText, Users } from "lucide-react";
+import { FileText, FolderTree, LibraryBig, MessageSquareText, Search, ScrollText, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useDeferredValue, useEffect, useState } from "react";
 
@@ -52,7 +52,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const pages = [
     { href: "/perguntar", label: "Perguntar ao assistente", icon: MessageSquareText },
     { href: "/biblioteca", label: "Biblioteca de documentos", icon: LibraryBig },
-    ...(me.user.role !== "MEMBER" ? [{ href: "/usuarios", label: "Usuários", icon: Users }] : []),
+    ...(me.user.role !== "MEMBER"
+      ? [
+          { href: "/colecoes", label: "Coleções", icon: FolderTree },
+          { href: "/usuarios", label: "Usuários", icon: Users },
+        ]
+      : []),
     ...(me.user.role === "ADMIN" ? [{ href: "/auditoria", label: "Auditoria", icon: ScrollText }] : []),
   ];
 

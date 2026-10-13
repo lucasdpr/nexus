@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Gauge, LibraryBig, LogOut, MessageSquareText, ScrollText, Search, Users } from "lucide-react";
+import { FolderTree, Gauge, LibraryBig, LogOut, MessageSquareText, ScrollText, Search, Users } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,7 +29,12 @@ function navigationFor(role: Me["user"]["role"]) {
     { href: "/painel", label: "Painel", icon: Gauge },
     { href: "/perguntar", label: "Perguntar", icon: MessageSquareText },
     { href: "/biblioteca", label: "Biblioteca", icon: LibraryBig },
-    ...(role !== "MEMBER" ? [{ href: "/usuarios", label: "Usuários", icon: Users }] : []),
+    ...(role !== "MEMBER"
+      ? [
+          { href: "/colecoes", label: "Coleções", icon: FolderTree },
+          { href: "/usuarios", label: "Usuários", icon: Users },
+        ]
+      : []),
     ...(role === "ADMIN" ? [{ href: "/auditoria", label: "Auditoria", icon: ScrollText }] : []),
   ];
 }
