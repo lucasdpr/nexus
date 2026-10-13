@@ -386,3 +386,68 @@ async def test_download_of_a_lost_file_is_a_clear_404_not_a_server_error(
 
     assert response.status_code == 404
     assert "não está mais disponível" in response.json()["detail"]
+
+
+async def test_direct_upload_with_a_token_creates_the_document_and_enforces_the_session(
+    make_client: ClientFactory, worker: Worker
+) -> None:
+    admin = await signup(make_client)
+    collection_id = await _collection(admin)
+    issued = await admin.client.post("/api/v1/documents/upload-token")
+    assert issued.status_code == 200, issued.text
+    token = issued.json()["token"]
+    origin = {"Origin": get_settings().web_origin}
+    anonymous = make_client()
+
+    preflight = await anonymous.options(
+        "/api/v1/documents/direct", headers=origin | {"Access-Control-Request-Method": "POST"}
+    )
+    sent = await anonymous.post(
+        "/api/v1/documents/direct",
+        headers=origin,
+        data={"token": token, "collection_id": collection_id, "title": "Via token"},
+        files={"file": ("manual.pdf", MANUAL, "application/pdf")},
+    )
+
+    assert preflight.status_code == 204
+    assert preflight.headers["access-control-allow-origin"] == origin["Origin"]
+    assert sent.status_code == 201, sent.text
+    assert sent.headers["access-control-allow-origin"] == origin["Origin"]
+    assert sent.json()["title"] == "Via token"
+    await worker.run_until_empty()
+    assert (await admin.client.get(f"/api/v1/documents/{sent.json()['id']}")).json()[
+        "status"
+    ] == "READY"
+
+    forged = await anonymous.post(
+        "/api/v1/documents/direct",
+        headers=origin,
+        data={"token": token + "x", "collection_id": collection_id},
+        files={"file": ("manual.pdf", MANUAL, "application/pdf")},
+    )
+    await admin.client.post("/api/v1/auth/logout")
+    after_logout = await anonymous.post(
+        "/api/v1/documents/direct",
+        headers=origin,
+        data={"token": token, "collection_id": collection_id},
+        files={"file": ("outro.pdf", make_pdf(["Outro documento"]), "application/pdf")},
+    )
+
+    assert forged.status_code == 401
+    assert after_logout.status_code == 401
+
+
+async def test_other_origins_get_no_cors_headers_on_direct_upload(
+    make_client: ClientFactory,
+) -> None:
+    anonymous = make_client()
+
+    response = await anonymous.options(
+        "/api/v1/documents/direct",
+        headers={
+            "Origin": "https://site-malicioso.example",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert "access-control-allow-origin" not in response.headers

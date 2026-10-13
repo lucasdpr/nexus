@@ -14,7 +14,7 @@ from app.core.db import create_engine, create_sessionmaker
 from app.core.errors import DomainError
 from app.core.limits import BodySizeLimitMiddleware
 from app.core.logging import configure_logging
-from app.core.origin import origin_guard
+from app.core.origin import direct_upload_cors, origin_guard
 from app.ingestion.pipeline import IngestionContext, job_handlers
 from app.jobs.worker import Worker
 from app.modules.audit.router import router as audit_router
@@ -81,10 +81,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.middleware("http")(origin_guard({settings.web_origin}))
+    app.middleware("http")(direct_upload_cors(settings.web_origin))
     app.add_middleware(
         BodySizeLimitMiddleware,
         default_bytes=JSON_BODY_LIMIT_BYTES,
-        by_path={"/api/v1/documents": settings.max_upload_bytes + MULTIPART_OVERHEAD_BYTES},
+        by_path={
+            "/api/v1/documents": settings.max_upload_bytes + MULTIPART_OVERHEAD_BYTES,
+            "/api/v1/documents/direct": settings.max_upload_bytes + MULTIPART_OVERHEAD_BYTES,
+        },
     )
     app.add_exception_handler(DomainError, _domain_error_handler)
 

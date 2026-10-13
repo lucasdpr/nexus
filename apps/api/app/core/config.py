@@ -26,6 +26,11 @@ class Settings(BaseSettings):
 
     # Origem do front-end. Requisições que alteram dados vindas de outra origem são recusadas.
     web_origin: str = "http://localhost:3000"
+    # Endereço público da API, usado no envio direto de arquivos grandes. Vazio desliga o
+    # envio direto (o navegador usa o caminho normal, pelo front-end).
+    public_api_url: str = ""
+    # Definida pelo Render automaticamente.
+    render_external_url: str = ""
 
     session_ttl_hours: int = 24 * 7
     login_window_minutes: int = 15
@@ -102,6 +107,11 @@ class Settings(BaseSettings):
         if self.storage_backend:
             return self.storage_backend
         return "db" if self.environment == "production" else "local"
+
+    @property
+    def direct_upload_url(self) -> str | None:
+        base = (self.public_api_url or self.render_external_url).rstrip("/")
+        return f"{base}/api/v1/documents/direct" if base else None
 
     @property
     def cookie_secure(self) -> bool:

@@ -26,3 +26,35 @@ def origin_guard(allowed_origins: set[str]) -> Middleware:
         return await call_next(request)
 
     return middleware
+
+
+DIRECT_UPLOAD_PATH = "/api/v1/documents/direct"
+
+
+def direct_upload_cors(web_origin: str) -> Middleware:
+    """CORS só para o envio direto de arquivos, e só para o front-end configurado.
+
+    A rota autentica por token no formulário, não por cookie, então liberar essa origem não
+    expõe a sessão de ninguém. O navegador faz uma consulta OPTIONS antes porque o envio
+    acompanha o progresso; ela é respondida aqui, sem passar pelos demais middlewares.
+    """
+    headers = {
+        "Access-Control-Allow-Origin": web_origin,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "content-type",
+        "Access-Control-Max-Age": "600",
+        "Vary": "Origin",
+    }
+
+    async def middleware(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        if request.url.path != DIRECT_UPLOAD_PATH or request.headers.get("origin") != web_origin:
+            return await call_next(request)
+        if request.method == "OPTIONS":
+            return Response(status_code=204, headers=headers)
+        response = await call_next(request)
+        response.headers.update(headers)
+        return response
+
+    return middleware

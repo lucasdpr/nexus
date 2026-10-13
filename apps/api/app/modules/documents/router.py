@@ -3,10 +3,12 @@ from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile, status
+from pydantic import BaseModel
 
-from app.core.errors import PayloadTooLargeError
+from app.core.db import set_tenant
+from app.core.errors import AuthenticationError, PayloadTooLargeError
 from app.modules.auth.dependencies import Client, CurrentUserDep, DbSession, SettingsDep
-from app.modules.documents import repository, service
+from app.modules.documents import direct_upload, repository, service
 from app.modules.documents.models import DocumentKind, DocumentStatus
 from app.modules.documents.repository import DocumentFilters
 from app.modules.documents.schemas import (
@@ -32,6 +34,42 @@ StorageDep = Annotated[Storage, Depends(get_storage)]
 def _content_disposition(filename: str) -> str:
     ascii_name = filename.encode("ascii", "replace").decode().replace("?", "_")
     return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
+
+
+class UploadToken(BaseModel):
+    token: str
+    # Onde enviar o arquivo; None quando a API não tem endereço público (usa o caminho normal).
+    upload_url: str | None
+    expires_in: int
+
+
+@router.post("/upload-token")
+async def create_upload_token(current: CurrentUserDep, settings: SettingsDep) -> UploadToken:
+    """Token curto para enviar arquivos grandes direto à API (ver `direct_upload`)."""
+    return UploadToken(
+        token=direct_upload.issue_token(settings, current),
+        upload_url=settings.direct_upload_url,
+        expires_in=direct_upload.TOKEN_TTL_SECONDS,
+    )
+
+
+@router.post("/direct", status_code=status.HTTP_201_CREATED)
+async def upload_document_direct(
+    db: DbSession,
+    client: Client,
+    settings: SettingsDep,
+    storage: StorageDep,
+    token: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+    collection_id: Annotated[UUID, Form()],
+    title: Annotated[str | None, Form(max_length=200)] = None,
+) -> DocumentDetail:
+    """Mesmo envio da rota normal, autenticado pelo token em vez do cookie de sessão."""
+    current = direct_upload.read_token(settings, token)
+    if current is None or not await direct_upload.still_authorized(db, current):
+        raise AuthenticationError("O token de envio expirou. Tente enviar o arquivo de novo.")
+    await set_tenant(db, current.org_id, current.user_id)
+    return await upload_document(db, current, client, settings, storage, file, collection_id, title)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
