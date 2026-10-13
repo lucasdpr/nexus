@@ -213,7 +213,14 @@ async def download(
     client: ClientInfo,
 ) -> tuple[Document, bytes]:
     document = (await _get_row(db, current, document_id))[0]
-    data = await storage.get(document.storage_key)
+    try:
+        data = await storage.get(document.storage_key)
+    except FileNotFoundError as exc:
+        # O texto indexado continua valendo; só o arquivo original se perdeu.
+        raise NotFoundError(
+            "O arquivo original não está mais disponível. "
+            "Envie o documento de novo para recuperá-lo."
+        ) from exc
     audit.record(
         db,
         org_id=current.org_id,

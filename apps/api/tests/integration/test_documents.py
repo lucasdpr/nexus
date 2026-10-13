@@ -16,7 +16,7 @@ from app.core.config import get_settings
 from app.core.db import set_tenant
 from app.ingestion.pipeline import GAVE_UP_ERROR, IngestionContext, job_handlers
 from app.jobs.worker import Worker
-from app.modules.documents.models import Chunk
+from app.modules.documents.models import Chunk, Document
 from tests.conftest import ClientFactory
 from tests.files import make_docx, make_pdf
 from tests.integration.support import Account, add_user, signup
@@ -365,3 +365,24 @@ async def test_document_text_follows_the_same_access_rules(
     assert (await other_org.client.get(f"{path}/{warranty['id']}")).status_code == 404
     unrelated_chunk = await admin.client.get(f"{path}/{UUID(int=0)}")
     assert unrelated_chunk.status_code == 404
+
+
+async def test_download_of_a_lost_file_is_a_clear_404_not_a_server_error(
+    make_client: ClientFactory, worker: Worker, app: FastAPI
+) -> None:
+    admin = await signup(make_client)
+    created = await _upload(admin.client, await _collection(admin), "nota.pdf", MANUAL)
+    document_id = created.json()["id"]
+    await worker.run_until_empty()
+
+    sessionmaker: async_sessionmaker[AsyncSession] = app.state.sessionmaker
+    async with sessionmaker() as db:
+        await set_tenant(db, UUID(admin.org_id))
+        key = await db.scalar(select(Document.storage_key).where(Document.id == UUID(document_id)))
+    assert key is not None
+    await app.state.storage.delete(key)
+
+    response = await admin.client.get(f"/api/v1/documents/{document_id}/file")
+
+    assert response.status_code == 404
+    assert "não está mais disponível" in response.json()["detail"]
