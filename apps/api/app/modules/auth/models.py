@@ -52,3 +52,5 @@ class SignupAttempt(IdMixin, CreatedAtMixin, Base):
     ip: Mapped[str] = mapped_column(String(64))
     # Só as tentativas que criaram conta contam para o teto global (recusadas não o esgotam).
     succeeded: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # Recusada (e-mail já usado): conta no limite por IP, mas não no teto global.
+    refused: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))

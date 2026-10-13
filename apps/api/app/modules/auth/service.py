@@ -25,6 +25,7 @@ from app.modules.users.service import EMAIL_TAKEN
 
 INVALID_CREDENTIALS = "E-mail ou senha incorretos."
 TOO_MANY_ATTEMPTS = "Muitas tentativas de login. Aguarde alguns minutos."
+IN_FLIGHT = timedelta(minutes=2)
 TOO_MANY_SIGNUPS = "Muitos cadastros partiram deste endereço. Tente de novo mais tarde."
 
 _FIND_USER = text("select user_id, org_id, password_hash, status from auth_find_user(:email)")
@@ -87,6 +88,11 @@ async def signup(
         await db.flush()
     except IntegrityError as exc:
         await db.rollback()
+        # Recusada: deixa de contar no teto global (continua contando no limite por IP).
+        await db.execute(
+            update(SignupAttempt).where(SignupAttempt.id == attempt_id).values(refused=True)
+        )
+        await db.commit()
         raise ConflictError(EMAIL_TAKEN) from exc
 
     # O navegador e o IP do cadastro passam a ser conhecidos da conta.
@@ -115,7 +121,12 @@ async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings:
     total = await db.scalar(
         select(func.count())
         .select_from(SignupAttempt)
-        .where(SignupAttempt.succeeded.is_(True), SignupAttempt.created_at >= since)
+        .where(
+            SignupAttempt.created_at >= since,
+            SignupAttempt.refused.is_(False),
+            # Contas criadas, mais as tentativas recentes ainda em andamento.
+            or_(SignupAttempt.succeeded.is_(True), SignupAttempt.created_at >= _now() - IN_FLIGHT),
+        )
     )
     if (total or 0) >= settings.signup_max_total_per_hour:
         raise RateLimitedError(TOO_MANY_SIGNUPS)
