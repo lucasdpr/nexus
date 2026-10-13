@@ -2,8 +2,9 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from importlib.metadata import version
+from typing import Annotated
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -18,11 +19,14 @@ from app.core.origin import direct_upload_cors, origin_guard
 from app.ingestion.pipeline import IngestionContext, job_handlers
 from app.jobs.worker import Worker
 from app.modules.audit.router import router as audit_router
+from app.modules.auth.dependencies import require_roles
+from app.modules.auth.identity import CurrentUser
 from app.modules.auth.router import router as auth_router
 from app.modules.chat.router import router as chat_router
 from app.modules.collections.router import router as collections_router
 from app.modules.documents.router import router as documents_router
 from app.modules.search.router import router as search_router
+from app.modules.users.models import Role
 from app.modules.users.router import router as users_router
 from app.storage import build_storage
 
@@ -91,6 +95,24 @@ def create_app() -> FastAPI:
         },
     )
     app.add_exception_handler(DomainError, _domain_error_handler)
+
+    @app.get("/api/v1/ops/network-diagnostic", tags=["ops"])
+    async def network_diagnostic(
+        request: Request,
+        current: Annotated[CurrentUser, Depends(require_roles(Role.ADMIN))],
+    ) -> dict[str, str | None]:
+        """TEMPORÁRIO: mostra os cabeçalhos de rede que chegam, para calibrar o IP real."""
+        names = (
+            "x-forwarded-for",
+            "x-real-ip",
+            "forwarded",
+            "cf-connecting-ip",
+            "true-client-ip",
+            "x-vercel-forwarded-for",
+        )
+        info = {name: request.headers.get(name) for name in names}
+        info["peer"] = request.client.host if request.client else None
+        return info
 
     @app.get("/api/health", tags=["ops"])
     def health() -> HealthResponse:
