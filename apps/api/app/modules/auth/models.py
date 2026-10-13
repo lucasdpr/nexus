@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Index, LargeBinary, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, LargeBinary, String, text
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,3 +50,5 @@ class SignupAttempt(IdMixin, CreatedAtMixin, Base):
     __table_args__ = (Index("ix_signup_attempts_ip_created", "ip", "created_at"),)
 
     ip: Mapped[str] = mapped_column(String(64))
+    # Só as tentativas que criaram conta contam para o teto global (recusadas não o esgotam).
+    succeeded: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))

@@ -2,10 +2,11 @@ import asyncio
 
 import pytest
 from fastapi import FastAPI
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.cli import seed_demo
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.db import create_engine
 from app.modules.auth.dependencies import DEVICE_COOKIE, SESSION_COOKIE
 from app.modules.auth.service import INVALID_CREDENTIALS
@@ -298,3 +299,51 @@ async def test_total_signups_per_hour_are_capped_even_from_different_ips(
 
     assert first.status_code == 201
     assert forged_other_ip.status_code == 429
+
+
+async def test_refused_signups_do_not_use_up_the_global_cap(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "signup_max_per_ip_per_hour", 1000)
+    # O teto conta as contas criadas na última hora, inclusive as de outros testes.
+    monkeypatch.setattr(settings, "signup_max_total_per_hour", 100_000)
+    base = {"organization_name": "Teto", "name": "Pessoa", "password": PASSWORD}
+    taken = unique_email()
+    first = await make_client("203.0.113.20").post(
+        "/api/v1/auth/signup", json=base | {"email": taken}
+    )
+    monkeypatch.setattr(
+        settings, "signup_max_total_per_hour", await _signups_last_hour(settings) + 1
+    )
+
+    repeated = [
+        await make_client(f"203.0.113.{30 + index}").post(
+            "/api/v1/auth/signup", json=base | {"email": taken}
+        )
+        for index in range(3)
+    ]
+    one_more = await make_client("203.0.113.40").post(
+        "/api/v1/auth/signup", json=base | {"email": unique_email()}
+    )
+    blocked = await make_client("203.0.113.41").post(
+        "/api/v1/auth/signup", json=base | {"email": unique_email()}
+    )
+
+    assert first.status_code == 201
+    assert [response.status_code for response in repeated] == [409, 409, 409]
+    assert one_more.status_code == 201
+    assert blocked.status_code == 429
+
+
+async def _signups_last_hour(settings: Settings) -> int:
+    engine = create_engine(settings.database_url.get_secret_value(), pooled=False)
+    async with engine.connect() as connection:
+        count = await connection.scalar(
+            text(
+                "SELECT count(*) FROM signup_attempts "
+                "WHERE succeeded AND created_at >= now() - interval '1 hour'"
+            )
+        )
+    await engine.dispose()
+    return int(count or 0)

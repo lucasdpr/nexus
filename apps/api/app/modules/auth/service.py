@@ -66,7 +66,7 @@ async def signup(
 ) -> LoginResult:
     org_id, user_id = uuid7(), uuid7()
     await set_tenant(db, org_id, user_id)
-    await _ensure_signup_allowed(db, client, settings)
+    attempt_id = await _ensure_signup_allowed(db, client, settings)
 
     password_hash = await asyncio.to_thread(hash_password, data.password)
     db.add(
@@ -93,11 +93,14 @@ async def signup(
     device_token = _record_success(db, data.email, client)
     token, session = _open_session(db, org_id, user_id, client, settings)
     audit.record(db, org_id=org_id, actor_id=user_id, action="auth.signup", ip=client.ip)
+    await db.execute(
+        update(SignupAttempt).where(SignupAttempt.id == attempt_id).values(succeeded=True)
+    )
     await db.commit()
     return LoginResult(token, device_token, CurrentUser(user_id, org_id, Role.ADMIN, session.id))
 
 
-async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings: Settings) -> None:
+async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings: Settings) -> UUID:
     """Limita contas novas por IP e no total. A tentativa é gravada e confirmada antes de
     qualquer outra coisa, para contar mesmo quando o cadastro é recusado (e-mail já usado).
 
@@ -110,7 +113,9 @@ async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings:
     await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended("signup", 0))))
     since = _now() - timedelta(hours=1)
     total = await db.scalar(
-        select(func.count()).select_from(SignupAttempt).where(SignupAttempt.created_at >= since)
+        select(func.count())
+        .select_from(SignupAttempt)
+        .where(SignupAttempt.succeeded.is_(True), SignupAttempt.created_at >= since)
     )
     if (total or 0) >= settings.signup_max_total_per_hour:
         raise RateLimitedError(TOO_MANY_SIGNUPS)
@@ -122,8 +127,10 @@ async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings:
         )
         if (from_ip or 0) >= settings.signup_max_per_ip_per_hour:
             raise RateLimitedError(TOO_MANY_SIGNUPS)
-    db.add(SignupAttempt(ip=bucket or "desconhecido"))
+    attempt = SignupAttempt(ip=bucket or "desconhecido")
+    db.add(attempt)
     await db.commit()
+    return attempt.id
 
 
 def _ip_bucket(ip: str | None) -> str | None:
