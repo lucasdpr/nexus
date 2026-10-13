@@ -67,6 +67,10 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: [api, web]
+    # bash -eo pipefail: sem pipefail, `comando | tee log` esconderia a falha de `comando`.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
       - name: Senha aleatória para o administrador da demonstração
