@@ -41,7 +41,8 @@ class Settings(BaseSettings):
     # recusadas também, para não servir de teste de quais e-mails já existem.
     signup_max_per_ip_per_hour: int = 5
     # Quantos proxies confiáveis ficam entre o cliente e a API (lê o IP de X-Forwarded-For
-    # a partir da direita). Sem valor: 2 em produção (Vercel e Render) e 0 fora dela.
+    # a partir da direita). Sem valor: 4 em produção e 0 fora dela. O 4 foi medido em produção:
+    # cliente, Vercel, Cloudflare (que fica na frente do Render) e o balanceador do Render.
     trusted_proxy_hops: int | None = None
     login_known_client_days: int = 30
 
@@ -123,7 +124,7 @@ class Settings(BaseSettings):
     def effective_proxy_hops(self) -> int:
         if self.trusted_proxy_hops is not None:
             return self.trusted_proxy_hops
-        return 2 if self.environment == "production" else 0
+        return 4 if self.environment == "production" else 0
 
     @property
     def cookie_secure(self) -> bool:

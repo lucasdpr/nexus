@@ -103,6 +103,11 @@ async def _ensure_signup_allowed(db: AsyncSession, client: ClientInfo, settings:
     bucket = _ip_bucket(client.ip)
     if bucket is None:
         return
+    # Trava por IP até o commit: contar e gravar viram uma operação só, e cadastros simultâneos
+    # não passam do limite juntos.
+    await db.execute(
+        select(func.pg_advisory_xact_lock(func.hashtextextended(f"signup:{bucket}", 0)))
+    )
     since = _now() - timedelta(hours=1)
     recent = await db.scalar(
         select(func.count())

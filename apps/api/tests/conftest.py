@@ -55,7 +55,7 @@ async def _truncate_all(database_url: str) -> None:
             text(
                 "TRUNCATE organizations, users, sessions, login_attempts, collections, "
                 "collection_members, audit_events, documents, processing_steps, chunks, jobs, "
-                "conversations, messages, citations "
+                "conversations, messages, citations, signup_attempts, stored_files "
                 "CASCADE"
             )
         )

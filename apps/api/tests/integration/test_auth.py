@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -239,3 +241,29 @@ async def test_signups_are_limited_per_ip_and_refused_attempts_count(
     assert repeated.status_code == 409
     assert blocked.status_code == 429
     assert elsewhere.status_code == 201
+
+
+async def test_simultaneous_signups_from_one_ip_cannot_exceed_the_limit(
+    make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "signup_max_per_ip_per_hour", 3)
+    ip = "198.51.100.90"
+
+    responses = await asyncio.gather(
+        *(
+            make_client(ip).post(
+                "/api/v1/auth/signup",
+                json={
+                    "organization_name": f"Empresa Paralela {index}",
+                    "name": "Pessoa Paralela",
+                    "email": unique_email(),
+                    "password": PASSWORD,
+                },
+            )
+            for index in range(8)
+        )
+    )
+
+    created = [response for response in responses if response.status_code == 201]
+    assert len(created) == 3
+    assert all(response.status_code in (201, 429) for response in responses)

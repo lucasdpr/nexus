@@ -29,3 +29,10 @@ def test_a_short_or_missing_or_malformed_header_falls_back_to_the_connection() -
 
 def test_ipv6_clients_are_normalized() -> None:
     assert client_ip(_request("2001:DB8::1, 76.76.21.21"), 2) == "2001:db8::1"
+
+
+def test_the_chain_measured_in_production_resolves_to_the_real_client() -> None:
+    # Medido no ambiente real: cliente, saída da Vercel, borda da Cloudflare e balanceador.
+    chain = "177.71.70.206,18.230.57.233, 104.23.213.149, 10.28.185.167"
+
+    assert client_ip(_request(chain, peer="10.28.185.167"), 4) == "177.71.70.206"
