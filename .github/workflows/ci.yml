@@ -114,8 +114,8 @@ jobs:
       - name: Reimplantar a API
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "RENDER_DEPLOY_HOOK_URL não configurado; deploy da API não disparado."
+            echo "::warning title=deploy::RENDER_DEPLOY_HOOK_URL não configurado; deploy da API não disparado."
             exit 0
           fi
           curl --fail --silent --show-error --max-time 30 -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
-          echo "Deploy da API disparado."
+          echo "::notice title=deploy::Deploy da API disparado no Render."
