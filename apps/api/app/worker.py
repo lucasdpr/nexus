@@ -13,6 +13,7 @@ from app.core.db import create_engine, create_sessionmaker
 from app.core.logging import configure_logging
 from app.ingestion.pipeline import IngestionContext, job_handlers
 from app.jobs.worker import Worker
+from app.models import Base  # noqa: F401 (registra todos os modelos; sem isso as chaves estrangeiras não resolvem)
 from app.storage import build_storage
 
 
