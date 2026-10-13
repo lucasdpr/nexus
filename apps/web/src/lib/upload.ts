@@ -1,9 +1,12 @@
 import { ApiError, errorMessage, type DocumentDetail } from "@/lib/api/client";
 
 /**
- * A Vercel recusa corpos de requisição acima de ~4,5 MB. Acima deste tamanho o navegador
- * envia o arquivo direto à API (que aceita até 25 MB), com um token curto pedido antes.
+ * Envio direto do navegador à API, com um token curto, para hospedagens de front-end que
+ * limitam o corpo das requisições (as funções da Vercel recusam acima de ~4,5 MB). Fica
+ * desligado: aqui o front repassa `/api/*` por rewrite, que aceita arquivos de 25 MB (testado
+ * com 20 MB em produção). Para ligar, defina NEXT_PUBLIC_DIRECT_UPLOAD=true no build.
  */
+const DIRECT_UPLOAD = process.env.NEXT_PUBLIC_DIRECT_UPLOAD === "true";
 const DIRECT_THRESHOLD_BYTES = 4 * 1024 * 1024;
 
 type UploadToken = { token: string; upload_url: string | null; expires_in: number };
@@ -21,7 +24,7 @@ export async function uploadDocument(
   form.append("collection_id", collectionId);
 
   let url = "/api/v1/documents";
-  if (file.size > DIRECT_THRESHOLD_BYTES) {
+  if (DIRECT_UPLOAD && file.size > DIRECT_THRESHOLD_BYTES) {
     const direct = await requestDirectUpload();
     if (direct?.upload_url) {
       url = direct.upload_url;
