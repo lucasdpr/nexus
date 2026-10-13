@@ -89,8 +89,12 @@ jobs:
       - name: Explicar a falha
         if: failure()
         run: |
-          docker compose logs --no-color --tail=80 > services.log 2>&1 || true
-          for log in build up smoke services; do
+          docker compose ps -a > estado.log 2>&1 || true
+          docker compose logs --no-color --tail=120 worker > worker.log 2>&1 || true
+          # A API repete uma linha por consulta de status; sem esse filtro ela esconde o erro.
+          docker compose logs --no-color --tail=400 api 2>&1 | grep -v 'GET /api/v1/documents' | tail -80 > api.log || true
+          docker compose logs --no-color --tail=40 web > web.log 2>&1 || true
+          for log in smoke estado worker api web up build; do
             [ -s "$log.log" ] && bash scripts/ci-annotate.sh "$log.log" "docker/$log"
           done
           true
