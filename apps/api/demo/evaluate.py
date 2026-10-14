@@ -23,6 +23,7 @@ from demo.client import connect
 QUESTIONS = Path(__file__).parent / "questions.json"
 RATE_LIMIT_WAIT_S = 300
 RATE_LIMIT_RETRIES = 14
+NETWORK_RETRIES = 6
 
 
 def _plain(text: str) -> str:
@@ -68,6 +69,24 @@ def evaluate_search(client: httpx2.Client, questions: list[dict[str, Any]]) -> d
         "mrr": sum(1 / r for r in ranks if r) / total,
         "sem_resposta_sem_trechos": clean_refusals / unanswerable if unanswerable else 0.0,
     }
+
+
+def _retrying(client: httpx2.Client) -> httpx2.Client:
+    """Repete pedidos que falham por rede (a API pode reiniciar no meio da rodada)."""
+    original = client.send
+
+    def send(request: httpx2.Request, **kwargs: Any) -> httpx2.Response:
+        for attempt in range(NETWORK_RETRIES):
+            try:
+                return original(request, **kwargs)
+            except httpx2.TransportError:
+                if attempt == NETWORK_RETRIES - 1:
+                    raise
+                time.sleep(20)
+        raise AssertionError("inalcançável")
+
+    client.send = send  # type: ignore[method-assign]
+    return client
 
 
 def ask(client: httpx2.Client, question: str) -> dict[str, Any]:
@@ -136,7 +155,7 @@ def main() -> None:
     args = parser.parse_args()
 
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
-    client = connect()
+    client = _retrying(connect())
     print("Busca:")
     report = {"busca": evaluate_search(client, questions)}
     if args.chat:
