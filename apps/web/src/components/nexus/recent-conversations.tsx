@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { DeleteConversation } from "@/components/nexus/delete-conversation";
 import { api, unwrap } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -35,17 +36,24 @@ export function RecentConversations() {
           {items.map((conversation) => {
             const href = `/perguntar/${conversation.id}`;
             return (
-              <li key={conversation.id}>
+              <li key={conversation.id} className="group/item relative">
                 <Link
                   href={href}
                   aria-current={pathname === href ? "page" : undefined}
                   className={cn(
-                    "block truncate rounded-md px-2.5 py-1.5 text-[13px] text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                    "block truncate rounded-md py-1.5 pr-9 pl-2.5 text-[13px] text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                     pathname === href && "bg-sidebar-accent text-sidebar-foreground",
                   )}
                 >
                   {conversation.title}
                 </Link>
+                {/* Aparece ao passar o mouse ou focar com o teclado. */}
+                <DeleteConversation
+                  conversationId={conversation.id}
+                  title={conversation.title}
+                  redirectTo={pathname === href ? "/perguntar" : undefined}
+                  className="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100"
+                />
               </li>
             );
           })}

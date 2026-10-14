@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { SPRING } from "@/components/fx/motion";
 import { AnswerText, type CitationPreview } from "@/components/nexus/answer-text";
+import { AttachDocument } from "@/components/nexus/attach-document";
+import { DeleteConversation } from "@/components/nexus/delete-conversation";
 import { SourceCard } from "@/components/nexus/source-card";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -225,6 +227,16 @@ export function Chat({ conversationId: initialId }: { conversationId?: string })
             </div>
           ) : (
             <div className="mx-auto w-full max-w-3xl space-y-10 px-4 py-8 sm:px-8">
+              {conversationId && (
+                <div className="flex justify-end">
+                  <DeleteConversation
+                    conversationId={conversationId}
+                    title={turns[0]?.question.slice(0, 80)}
+                    redirectTo="/perguntar"
+                    variant="text"
+                  />
+                </div>
+              )}
               {turns.map((turn) => (
                 <TurnView
                   key={turn.key}
@@ -438,7 +450,12 @@ function Composer({
   return (
     // Caixa "spotlight": vidro flutuante com a borda em gradiente neon girando (.neon-ring).
     <form
-      className={cn("neon-ring relative rounded-2xl shadow-[0_18px_50px_-18px_var(--neon-violet)]", className)}
+      className={cn(
+        "neon-ring relative rounded-2xl shadow-[0_18px_50px_-18px_var(--neon-violet)]",
+        // Com o clipe de anexar presente (gestão e administração), o texto começa depois dele.
+        "[&:has([aria-label='Anexar documento'])_textarea]:pl-14",
+        className,
+      )}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -447,6 +464,7 @@ function Composer({
       <label htmlFor="pergunta" className="sr-only">
         Pergunta
       </label>
+      <AttachDocument />
       <textarea
         id="pergunta"
         value={value}

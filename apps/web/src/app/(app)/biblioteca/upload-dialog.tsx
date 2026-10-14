@@ -27,7 +27,14 @@ const MAX_BYTES = 25 * 1024 * 1024;
 
 type Item = { file: File; progress: number; error?: string; done?: boolean };
 
-export function UploadDialog({ collections }: { collections: Collection[] }) {
+export function UploadDialog({
+  collections,
+  trigger,
+}: {
+  collections: Collection[];
+  /** Botão que abre o diálogo; sem ele, aparece o botão padrão "Enviar documentos". */
+  trigger?: React.ReactNode;
+}) {
   const queryClient = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -63,6 +70,8 @@ export function UploadDialog({ collections }: { collections: Collection[] }) {
     }
     if (sent > 0) {
       await queryClient.invalidateQueries({ queryKey: ["documents"] });
+      await queryClient.invalidateQueries({ queryKey: ["pipeline-stats"] });
+      await queryClient.invalidateQueries({ queryKey: ["recent-documents"] });
       toast.success(sent === 1 ? "Documento enviado. O processamento começou." : `${sent} documentos enviados. O processamento começou.`);
     }
   }
@@ -78,10 +87,12 @@ export function UploadDialog({ collections }: { collections: Collection[] }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>
-          <FileUp aria-hidden />
-          Enviar documentos
-        </Button>
+        {trigger ?? (
+          <Button>
+            <FileUp aria-hidden />
+            Enviar documentos
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>

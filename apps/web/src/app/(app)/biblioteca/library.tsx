@@ -89,6 +89,11 @@ export function Library() {
         {canManage && collections.data && collections.data.length > 0 && (
           <UploadDialog collections={collections.data} />
         )}
+        {!canManage && (
+          <p className="max-w-[28ch] text-right text-[12px] text-muted-foreground">
+            Só gestão e administração enviam documentos. Você pode consultar e perguntar.
+          </p>
+        )}
       </header>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
