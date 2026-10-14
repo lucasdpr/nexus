@@ -8,9 +8,9 @@
     "sem_resposta_sem_trechos": 0.25
   },
   "resposta": {
-    "respondeu": 0.8333333333333334,
-    "citou_fonte_esperada": 0.8333333333333334,
-    "resposta_traz_o_fato": 0.8333333333333334,
+    "respondeu": 1.0,
+    "citou_fonte_esperada": 1.0,
+    "resposta_traz_o_fato": 1.0,
     "recusou_sem_resposta": 1.0
   }
 }

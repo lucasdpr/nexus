@@ -14,8 +14,8 @@ export const EVALUATION = {
     mrr: 0.875,
   },
   answers: {
-    // 15 das 18 perguntas com resposta: respondeu, citou o documento e a página certos e trouxe o fato.
-    correct: 15 / 18,
+    // 18 das 18 perguntas com resposta: respondeu, citou o documento e a página certos e trouxe o fato.
+    correct: 1,
     // Das 4 perguntas sem resposta nos documentos, quantas ele recusou em vez de inventar.
     refused: 1,
   },

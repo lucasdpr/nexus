@@ -150,10 +150,13 @@ NEXUS_URL=https://seu-site NEXUS_PASSWORD=... python -m demo.evaluate --chat
 Mede, na busca, em que posição aparece o trecho certo (acerto@1, @5 e MRR) e, nas respostas,
 se o assistente respondeu, citou o documento e a página esperados, trouxe o fato e recusou o
 que não tem resposta. Com os embeddings locais atuais, o trecho certo aparece em 1º lugar em
-78% das perguntas e entre os 5 primeiros em 100%. Nas respostas, 15 das 18 perguntas saíram
-com o documento, a página e o fato certos (83%), e as 4 perguntas sem resposta nos documentos
-foram recusadas, sem invenção (100%). O resultado mistura respostas do Gemini e, quando ele
-está sobrecarregado, a resposta extrativa de reserva; o relatório fica em `apps/api/demo/last-report.json`.
+78% das perguntas e entre os 5 primeiros em 100%. Nas respostas, as 18 perguntas
+com resposta saíram com o documento, a página e o fato certos (100%), e as 4 perguntas sem
+resposta nos documentos foram recusadas, sem invenção (100%). São poucas perguntas, escritas
+pelo próprio projeto: mostram a direção, não são um benchmark. Quando o Gemini principal está
+sobrecarregado, a API tenta modelos menores e, por fim, uma resposta extrativa de reserva (que
+com o Gemini fora do ar acerta 83% e nunca inventa). O relatório fica em
+`apps/api/demo/last-report.json`.
 
 ## Qualidade
 
