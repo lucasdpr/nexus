@@ -10,7 +10,7 @@ test("envia um documento, espera o processamento e pergunta com fonte citada", a
   // documentos de demonstração nem de execuções anteriores.
   const model = `zx${Date.now().toString(36)}`;
   const title = `manual-${model}`;
-  const sourceLink = () => page.locator('aside[aria-label="Fontes da resposta"]').getByRole("link", { name: new RegExp(title) });
+  const sourceLink = () => page.locator('aside[aria-label="Fontes da resposta"]').getByRole("link", { name: new RegExp(title) }).first();
 
   await test.step("entra como administrador", async () => {
     await page.goto("/entrar");
@@ -39,7 +39,10 @@ test("envia um documento, espera o processamento e pergunta com fonte citada", a
   await test.step("espera o worker deixar o documento pronto", async () => {
     await page.getByRole("searchbox", { name: "Buscar documentos pelo título" }).fill(model);
     await expect(page.getByRole("link", { name: title })).toBeVisible();
-    await expect(page.getByText("Pronto", { exact: true })).toBeVisible({ timeout: 90_000 });
+    // A página renderiza a lista do celular e a tabela do desktop; a linha da tabela amarra o status ao documento.
+    await expect(page.getByRole("row", { name: new RegExp(title) }).getByText("Pronto", { exact: true })).toBeVisible({
+      timeout: 90_000,
+    });
   });
 
   await test.step("pergunta e recebe a resposta com a fonte", async () => {
