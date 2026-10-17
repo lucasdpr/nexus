@@ -10,6 +10,7 @@ test("envia um documento, espera o processamento e pergunta com fonte citada", a
   // documentos de demonstração nem de execuções anteriores.
   const model = `zx${Date.now().toString(36)}`;
   const title = `manual-${model}`;
+  const sourceLink = () => page.locator('aside[aria-label="Fontes da resposta"]').getByRole("link", { name: new RegExp(title) });
 
   await test.step("entra como administrador", async () => {
     await page.goto("/entrar");
@@ -36,7 +37,7 @@ test("envia um documento, espera o processamento e pergunta com fonte citada", a
   });
 
   await test.step("espera o worker deixar o documento pronto", async () => {
-    await page.getByRole("textbox", { name: "Buscar documentos pelo título" }).fill(model);
+    await page.getByRole("searchbox", { name: "Buscar documentos pelo título" }).fill(model);
     await expect(page.getByRole("link", { name: title })).toBeVisible();
     await expect(page.getByText("Pronto", { exact: true })).toBeVisible({ timeout: 90_000 });
   });
@@ -46,13 +47,13 @@ test("envia um documento, espera o processamento e pergunta com fonte citada", a
     await page.getByRole("textbox", { name: "Pergunta" }).fill(`Qual é o prazo de garantia do compressor ${model}?`);
     await page.getByRole("button", { name: "Enviar pergunta" }).click();
 
-    await expect(page.getByRole("article").getByText("24 meses").first()).toBeVisible({ timeout: 45_000 });
-    const sources = page.getByRole("complementary", { name: "Fontes da resposta" });
-    await expect(sources.getByRole("link", { name: new RegExp(title) })).toBeVisible();
+    // filter por texto, e não getByText: a resposta pode quebrar a frase em vários elementos.
+    await expect(page.getByRole("article").filter({ hasText: "24 meses" })).toBeVisible({ timeout: 45_000 });
+    await expect(sourceLink()).toBeVisible();
   });
 
   await test.step("abre o documento a partir da fonte, com o trecho grifado", async () => {
-    await page.getByRole("complementary", { name: "Fontes da resposta" }).getByRole("link", { name: new RegExp(title) }).click();
+    await sourceLink().click();
     await expect(page).toHaveURL(/\/documentos\/[^/?]+\?.*trecho=/);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
     await expect(page.locator("mark").first()).toContainText("24 meses");
